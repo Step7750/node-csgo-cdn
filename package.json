@@ -1,0 +1,22 @@
+{
+  "name": "csgo-stickers",
+  "version": "0.0.1",
+  "description": "Retrieves the Steam CDN URLs for CS:GO Stickers",
+  "keywords": [
+      "steam",
+      "csgo",
+      "global offensive",
+      "csgo",
+      "stickers",
+      "cdn"
+  ],
+  "dependencies": {
+      "steam-user": "^3.23.2"
+  },
+  "license": "MIT",
+  "author": {
+      "name": "Stepan Fedorko-Bartos",
+      "email": "Step7750@gmail.com",
+      "url": "http://stepan.me"
+  }
+}

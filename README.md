@@ -59,9 +59,11 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
     
 ### getItemNameURL(marketHashName)
 
-* `marketHashName` - The market hash name of a sticker or weapon (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
+* `marketHashName` - The market hash name of an item (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
 
 **Note: If the item is a weapon, it MUST have an associated wear**
+
+Ensure that you have enabled the relevant VPK downloading for the item category by using the options in the constructor.
 
 
 ### getStickerURL(stickerName, large=true)

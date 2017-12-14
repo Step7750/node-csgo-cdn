@@ -2,11 +2,6 @@
 
 Retrieves the Steam CDN URLs for CS:GO Item Images
 
-#### TODO
-- Add weapon images support
-- Add defindex support
-
-
 ## Why?
 
 Steam hosts all of the CS:GO resource images on their CDN, but unfortunately finding the URL for them was
@@ -57,6 +52,13 @@ You can find them in a CS:GO install directory as `items_game_cdn.txt`
     }
     ```
     
+### getItemNameURL(marketHashName)
+
+* `marketHashName` - The market hash name of a sticker or weapon (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
+
+**Note: If the item is a weapon, it MUST have an associated wear**
+
+
 ### getStickerURL(stickerName, large=false)
 
 * `stickerName` - Name of the sticker path from `items_game.txt` (ex. cluj2015/sig_olofmeister_gold)

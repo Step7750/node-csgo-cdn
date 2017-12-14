@@ -396,6 +396,11 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
+     * Retrieves the given weapon or sticker CDN URL given its market_hash_name
+     *
+     * Examples: M4A4 | 龍王 (Dragon King) (Field-Tested), Sticker | Robo, AWP | Redline (Field-Tested)
+     *
+     * Note: For a weapon, the name MUST have the associated wear
      *
      * @param marketHashName
      */

@@ -476,7 +476,9 @@ class CSGOImageCdn extends EventEmitter {
                 weaponClass = prefabs[prefab].item_class;
             }
 
-            return this.itemsGameCDN[`${weaponClass}_${paintKit}`];
+            const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+
+            return this.itemsGameCDN[path];
         }
     }
 }

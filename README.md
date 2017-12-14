@@ -7,8 +7,25 @@ Can retrieve CDN images for:
 * Graffiti (without tint)
 * Weapons
 * Music Kits
-* Tools (Crate Keys, Stattrak Swap Tool, etc...)
+* Tools (Crate Keys, Cases, Stattrak Swap Tool, etc...)
 * Status Icons (Pins, ESports Trophies, Map Contribution Tokens, Service Medals, etc...)
+
+
+## Table of Contents
+  * [Why?](https://github.com/Step7750/node-csgo-cdn#why)
+  * [How?](https://github.com/Step7750/node-csgo-cdn#how)
+  * [How to Install](https://github.com/Step7750/node-csgo-cdn#how-to-install)
+  * [Methods](https://github.com/Step7750/node-csgo-cdn#methods)
+    * [Constructor(client, options)](https://github.com/Step7750/node-csgo-cdn#constructorclient-options)
+    * [getItemNameURL(marketHashName)](https://github.com/Step7750/node-csgo-cdn#getitemnameurlmarkethashname)
+    * [getStickerURL(stickerName, large=true)](https://github.com/Step7750/node-csgo-cdn#getstickerurlstickername-largetrue)
+    * [getWeaponURL(defindex, paintindex)](https://github.com/Step7750/node-csgo-cdn#getweaponurldefindex-paintindex)
+  * [Properties](https://github.com/Step7750/node-csgo-cdn#properties)
+    * [itemsGame](https://github.com/Step7750/node-csgo-cdn#itemsgame)
+    * [csgoEnglish](https://github.com/Step7750/node-csgo-cdn#csgoenglish)
+    * [itemsGameCDN](https://github.com/Step7750/node-csgo-cdn#itemsgamecdn)
+  * [Events](https://github.com/Step7750/node-csgo-cdn#events)
+    * [ready](https://github.com/Step7750/node-csgo-cdn#ready)
     
 
 ## Why?
@@ -39,6 +56,11 @@ When trying to retrieve a CDN image URL for a given item, the library takes the 
 path that links to it to generate the corresponding URL.
 
 Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologne2015/mousesports.3e75da497d9f75fa56f463c22db25f29992561ce.png
+
+## How to Install
+
+### `npm install csgo-cdn`
+
 
 ## Methods
 

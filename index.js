@@ -19,7 +19,7 @@ class CSGOStickers extends EventEmitter {
     }
 
     set ready(r) {
-        if (r != this.ready) {
+        if (r !== this.ready) {
             this.emit(r ? 'ready' : 'unready');
         }
 
@@ -70,11 +70,14 @@ class CSGOStickers extends EventEmitter {
     }
 
     update() {
+        let manifestId;
         let manifestFiles;
         let vpkDir;
 
-        return this.getLatestManifestId().then((manifestId) => {
-            return this.user.getManifestAsync(730, 731, manifestId);
+        return this.getLatestManifestId().then((id) => {
+              manifestId = id;
+
+              return this.user.getManifestAsync(730, 731, manifestId);
         }).then(([manifest]) => {
             // download the VPK directory
             manifestFiles = manifest.files;
@@ -119,7 +122,7 @@ class CSGOStickers extends EventEmitter {
     async downloadStickerFiles(vpkDir, manifestFiles) {
         const requiredIndices = this.getRequiredStickerFiles(vpkDir);
 
-        for (const index in requiredIndices) {
+        for (let index in requiredIndices) {
             index = parseInt(index);
 
             // pad to 3 zeroes
@@ -128,15 +131,23 @@ class CSGOStickers extends EventEmitter {
             const fileName = `pak01_${paddedIndex}.vpk`;
 
             const file = manifestFiles.find((f) => f.filename.endsWith(fileName));
+            const filePath = `${this.config.directory}/${fileName}`;
 
-            console.log(file);
+            console.log(file.sha_content);
+
+            const isDownloaded = await this.isFileDownloaded(filePath, file.sha_content);
+
+            if (isDownloaded) {
+                console.log(`Already downloaded ${filePath}`);
+                continue;
+            }
 
             const status = `[${index+1}/${requiredIndices.length}]`;
 
             console.log(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
 
             const promise = new Promise((resolve, reject) => {
-                const ee = this.user.downloadFile(730, 731, file, `${this.config.directory}/${fileName}`, () => {
+                const ee = this.user.downloadFile(730, 731, file, filePath, () => {
                     resolve();
                 });
 
@@ -151,17 +162,28 @@ class CSGOStickers extends EventEmitter {
         }
     }
 
+    async isFileDownloaded(path, md5) {
+        try {
+            const hash = await hasha.fromFile(path, {algorithm: 'sha1'});
+
+            return hash === md5;
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
     getStickerURL(stickerName, large=false) {
         const fileName = large ? `${stickerName}_large.png` : `${stickerName}.png`;
 
-        const path = this.vpkFiles.find((t) => t.endsWith(fileName));
+        let path = this.vpkFiles.find((t) => t.endsWith(fileName));
 
         if (!path) return;
 
         const file = this.vpkDir.getFile(path);
 
         const md5 = hasha(file, {
-            'algorithm': 'md5'
+            'algorithm': 'sha1'
         });
 
         path = path.replace('resource/flash', 'icons');

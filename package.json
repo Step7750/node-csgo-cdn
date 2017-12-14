@@ -2,6 +2,8 @@
   "name": "csgo-cdn",
   "version": "1.0",
   "description": "Retrieves the Steam CDN URLs for CS:GO Item Images",
+  "main": "index.js",
+  "license": "MIT",
   "keywords": [
     "steam",
     "csgo",
@@ -20,10 +22,13 @@
     "vpk": "0.2.0",
     "winston": "^3.0.0-rc1"
   },
-  "license": "MIT",
   "author": {
     "name": "Stepan Fedorko-Bartos",
     "email": "Step7750@gmail.com",
     "url": "http://stepan.me"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Step7750/node-csgo-cdn.git"
+  },
 }

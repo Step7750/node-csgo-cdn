@@ -65,6 +65,7 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
 
 Ensure that you have enabled the relevant VPK downloading for the item category by using the options in the constructor.
 
+Returns the 'large' version of the image.
 
 ### getStickerURL(stickerName, large=true)
 

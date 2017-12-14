@@ -4,12 +4,14 @@ const fs = Promise.promisifyAll(require('fs'));
 const vpk = require('vpk');
 const vdf = require('simple-vdf');
 const hasha = require('hasha');
+const winston = require('winston');
 
 const defaultConfig = {
     directory: 'data',
     updateInterval: 30000,
     stickers: true,
     musicKits: true,
+    logLevel: 'info'
 };
 
 const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
@@ -40,6 +42,7 @@ class CSGOImageCdn extends EventEmitter {
         this.ready_ = r;
 
         if (r !== old && r) {
+            this.log.debug('Ready');
             this.emit('ready');
         }
     }
@@ -53,7 +56,21 @@ class CSGOImageCdn extends EventEmitter {
 
         this.user = Promise.promisifyAll(steamUser, {multiArgs: true});
 
+        this.log = winston.createLogger({
+            level: config.logLevel,
+            transports: [
+                new winston.transports.Console({
+                    colorize: true,
+                    format: winston.format.printf((info) => {
+                        return `[csgo-image-cdn] ${info.level}: ${info.message}`;
+                    })
+                })
+            ]
+        });
+
         if (!this.steamReady) {
+            this.log.debug('Steam not ready, waiting for logon');
+
             this.user.once('loggedOn', () => {
                 this.updateLoop();
             });
@@ -84,13 +101,15 @@ class CSGOImageCdn extends EventEmitter {
                 .then(() => this.updateLoop());
         }
         else {
+            this.log.info('Auto-updates disabled, checking if required files exist');
+
             // Try to load the resources locally
             try {
                 this.loadResources();
                 this.loadVPK();
                 this.ready = true;
-            } catch() {
-                // Doesn't have the needed files, update
+            } catch(e) {
+                this.log.warn('Needed CS:GO files not installed');
                 this.update();
             }
         }
@@ -100,6 +119,7 @@ class CSGOImageCdn extends EventEmitter {
      * Returns the product info for CSGO, with its depots and packages
      */
     getProductInfo() {
+        this.log.debug('Obtaining CS:GO product info');
         return new Promise((resolve, reject) => {
             this.user.getProductInfo([730], [], (apps, packages, unknownApps, unknownPackages) => {
                 resolve([apps, packages, unknownApps, unknownPackages]);
@@ -112,6 +132,7 @@ class CSGOImageCdn extends EventEmitter {
      * @return {*|PromiseLike<*[]>|Promise<*[]>} 731 Depot Manifest ID
      */
     getLatestManifestId() {
+        this.log.debug('Obtaining latest manifest ID');
         return this.getProductInfo().then(([apps, packages, unknownApps, unknownPackages]) => {
             const csgo = apps['730'].appinfo;
             const commonDepot = csgo.depots['731'];
@@ -129,9 +150,16 @@ class CSGOImageCdn extends EventEmitter {
      * @return {Promise<void>}
      */
     async update() {
-        if (!this.steamReady) return;
+        this.log.info('Checking for CS:GO file updates');
+
+        if (!this.steamReady) {
+            this.log.warn(`Steam not ready, can't check for updates`);
+            return;
+        }
 
         const manifestId = await this.getLatestManifestId();
+
+        this.log.debug(`Obtained latest manifest ID: ${manifestId}`);
 
         const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
         const manifestFiles = manifest.files;
@@ -141,7 +169,11 @@ class CSGOImageCdn extends EventEmitter {
         const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
         const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));
 
+        this.log.debug(`Downloading required static files`);
+
         await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile, csgoEnglishFile]);
+
+        this.log.debug('Loading static file resources');
 
         this.loadResources();
         this.loadVPK();
@@ -265,7 +297,11 @@ class CSGOImageCdn extends EventEmitter {
      * @return {Promise<void>}
      */
     async downloadVPKFiles(vpkDir, manifestFiles) {
+        this.log.debug('Computing required VPK files for selected packages');
+
         const requiredIndices = this.getRequiredVPKFiles(vpkDir);
+
+        this.log.debug(`Required VPK files ${requiredIndices}`);
 
         for (let index in requiredIndices) {
             index = parseInt(index);
@@ -281,13 +317,13 @@ class CSGOImageCdn extends EventEmitter {
             const isDownloaded = await this.isFileDownloaded(filePath, file.sha_content);
 
             if (isDownloaded) {
-                console.log(`Already downloaded ${filePath}`);
+                this.log.info(`Already downloaded ${filePath}`);
                 continue;
             }
 
             const status = `[${index+1}/${requiredIndices.length}]`;
 
-            console.log(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
+            this.log.info(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
 
             const promise = new Promise((resolve, reject) => {
                 const ee = this.user.downloadFile(730, 731, file, filePath, () => {
@@ -295,13 +331,13 @@ class CSGOImageCdn extends EventEmitter {
                 });
 
                 ee.on('progress', (bytesDownloaded, totalSize) => {
-                     console.log(`${status} ${(bytesDownloaded*100/totalSize).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSize)} MB`);
+                    this.log.info(`${status} ${(bytesDownloaded*100/totalSize).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSize)} MB`);
                 });
             });
 
             await promise;
 
-            console.log(`${status} Downloaded ${fileName}`);
+            this.log.info(`${status} Downloaded ${fileName}`);
         }
     }
 
@@ -325,12 +361,15 @@ class CSGOImageCdn extends EventEmitter {
     /**
      * Given a VPK path, returns the CDN URL
      * @param path VPK path
-     * @return {string} CDN URL
+     * @return {string|void} CDN URL
      */
     getPathURL(path) {
         const file = this.vpkDir.getFile(path);
 
-        if (!file) return;
+        if (!file) {
+            this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`)
+            return;
+        }
 
         const sha1 = hasha(file, {
             'algorithm': 'sha1'

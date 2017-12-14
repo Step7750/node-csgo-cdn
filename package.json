@@ -1,27 +1,28 @@
 {
-    "name": "csgo-image-cdn",
-    "version": "0.0.1",
-    "description": "Retrieves the Steam CDN URLs for CS:GO Item Images",
-    "keywords": [
-        "steam",
-        "csgo",
-        "global offensive",
-        "csgo",
-        "stickers",
-        "cdn"
-    ],
-    "dependencies": {
-        "steam-user": "^3.23.2",
-        "steam-totp": "^2.0.1",
-        "bluebird": "^3.5.1",
-        "vpk": "0.2.0",
-        "hasha": "^3.0.0",
-        "simple-vdf": "^1.1.0"
-    },
-    "license": "MIT",
-    "author": {
-        "name": "Stepan Fedorko-Bartos",
-        "email": "Step7750@gmail.com",
-        "url": "http://stepan.me"
-    }
+  "name": "csgo-image-cdn",
+  "version": "0.0.1",
+  "description": "Retrieves the Steam CDN URLs for CS:GO Item Images",
+  "keywords": [
+    "steam",
+    "csgo",
+    "global offensive",
+    "csgo",
+    "stickers",
+    "cdn"
+  ],
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "hasha": "^3.0.0",
+    "simple-vdf": "^1.1.0",
+    "steam-totp": "^2.0.1",
+    "steam-user": "^3.23.2",
+    "vpk": "0.2.0",
+    "winston": "^3.0.0-rc1"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Stepan Fedorko-Bartos",
+    "email": "Step7750@gmail.com",
+    "url": "http://stepan.me"
+  }
 }

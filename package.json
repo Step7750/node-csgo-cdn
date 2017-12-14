@@ -13,7 +13,9 @@
     "dependencies": {
         "steam-user": "^3.23.2",
         "steam-totp": "^2.0.1",
-        "bluebird": "^3.5.1"
+        "bluebird": "^3.5.1",
+        "vpk": "0.2.0",
+        "hasha": "^3.0.0"
     },
     "license": "MIT",
     "author": {

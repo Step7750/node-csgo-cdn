@@ -13,7 +13,7 @@ function bytesToMB(bytes) {
     return (bytes/1000000).toFixed(2);
 }
 
-class CSGOStickers extends EventEmitter {
+class CSGOImageCdn extends EventEmitter {
     get ready() {
         return this.ready_ || false;
     }
@@ -26,8 +26,8 @@ class CSGOStickers extends EventEmitter {
         const old = this.ready;
         this.ready_ = r;
 
-        if (r !== old) {
-            this.emit(r ? 'ready' : 'unready');
+        if (r !== old && r) {
+            this.emit('ready');
         }
     }
 
@@ -253,23 +253,23 @@ class CSGOStickers extends EventEmitter {
     }
 
     /**
-     * Returns the sticker Steam CDN URL for the specified sticker name
+     * Returns the item Steam CDN URL for the specified name
      *
      * Example Sticker Names: cologne2016/nv, cologne2016/fntc_holo, cologne2016/fntc_foil, cluj2015/sig_olofmeister_gold
      *
      * You can find the sticker names from their relevant "sticker_material" fields in items_game.txt
      *      items_game.txt can be found in the core game files of CS:GO
      *
-     * @param stickerName The sticker name (the sticker_material field in items_game.txt)
-     * @param large Whether to obtain the "large" CDN version of the sticker
-     * @return {string|void} If successful, the HTTPS CDN URL for the sticker
+     * @param name The item name (the sticker_material field in items_game.txt, or the cdn file format)
+     * @param large Whether to obtain the "large" CDN version of the item
+     * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-    getStickerURL(stickerName, large=false) {
+    getItemURL(name, large=false) {
         if (!this.ready) {
             return;
         }
 
-        const fileName = large ? `${stickerName}_large.png` : `${stickerName}.png`;
+        const fileName = large ? `${name}_large.png` : `${name}.png`;
 
         let path = this.vpkFiles.find((t) => t.endsWith(fileName));
 
@@ -288,4 +288,4 @@ class CSGOStickers extends EventEmitter {
     }
 }
 
-module.exports = CSGOStickers;
+module.exports = CSGOImageCdn;

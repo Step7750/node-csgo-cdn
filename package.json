@@ -1,7 +1,7 @@
 {
-    "name": "csgo-stickers",
+    "name": "csgo-image-cdn",
     "version": "0.0.1",
-    "description": "Retrieves the Steam CDN URLs for CS:GO Stickers",
+    "description": "Retrieves the Steam CDN URLs for CS:GO Item Images",
     "keywords": [
         "steam",
         "csgo",

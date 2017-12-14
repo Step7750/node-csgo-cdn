@@ -304,6 +304,26 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
+     * Given a VPK path, returns the CDN URL
+     * @param path VPK path
+     * @return {string} CDN URL
+     */
+    getPathURL(path) {
+        const file = this.vpkDir.getFile(path);
+
+        if (!file) return;
+
+        const sha1 = hasha(file, {
+            'algorithm': 'sha1'
+        });
+
+        path = path.replace('resource/flash', 'icons');
+        path = path.replace('.png', `.${sha1}.png`);
+
+        return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+    }
+
+    /**
      * Returns the item Steam CDN URL for the specified name
      *
      * Example Sticker Names: cologne2016/nv, cologne2016/fntc_holo, cologne2016/fntc_foil, cluj2015/sig_olofmeister_gold
@@ -321,21 +341,9 @@ class CSGOImageCdn extends EventEmitter {
         }
 
         const fileName = large ? `${name}_large.png` : `${name}.png`;
+        const path = this.vpkFiles.find((t) => t.endsWith(fileName));
 
-        let path = this.vpkFiles.find((t) => t.endsWith(fileName));
-
-        if (!path) return;
-
-        const file = this.vpkDir.getFile(path);
-
-        const sha1 = hasha(file, {
-            'algorithm': 'sha1'
-        });
-
-        path = path.replace('resource/flash', 'icons');
-        path = path.replace('.png', `.${sha1}.png`);
-
-        return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+        if (path) return this.getPathURL(path);
     }
 
     /**
@@ -386,6 +394,99 @@ class CSGOImageCdn extends EventEmitter {
         return false;
     }
 
+    getStickerNameURL(marketHashName) {
+        const reg = /Sticker \| (.*)/;
+        const match = marketHashName.match(reg);
+
+        if (!match) return;
+
+        const stickerName = match[1];
+        const stickerTag = `#${this.csgoEnglish[stickerName]}`;
+
+        const stickerKits = this.itemsGame.sticker_kits;
+
+        const kitIndex = Object.keys(stickerKits).find((n) => {
+            const k = stickerKits[n];
+
+            return k.item_name === stickerTag;
+        });
+
+        return this.getStickerURL(stickerKits[kitIndex].name, true);
+    }
+
+    getWeaponNameURL(marketHashName) {
+        const reg = /(.*) \| (.*) \(.*\)/;
+        const match = marketHashName.match(reg);
+
+        if (!match) return;
+
+        const weaponName = match[1];
+        const skinName = match[2];
+
+        const weaponTag = `#${this.csgoEnglish[weaponName]}`;
+        const skinTag = `#${this.csgoEnglish[skinName]}`;
+
+        const paintKits = this.itemsGame.paint_kits;
+
+        const paintindex = Object.keys(paintKits).find((n) => {
+            const kit = paintKits[n];
+
+            return kit.description_tag === skinTag;
+        });
+
+        const paintKit = paintKits[paintindex].name;
+
+        const prefabs = this.itemsGame.prefabs;
+        const prefab = Object.keys(prefabs).find((n) => {
+            const fab = prefabs[n];
+
+            return fab.item_name === weaponTag
+        });
+
+        let weaponClass;
+
+        if (!prefab) {
+            // special knives aren't in the prefab (karambits, etc...)
+            const items = this.itemsGame.items;
+
+            const item = Object.keys(items).find((n) => {
+                const i = items[n];
+
+                return i.item_name === weaponTag;
+            });
+
+            weaponClass = items[item].name;
+        }
+        else {
+            weaponClass = prefabs[prefab].item_class;
+        }
+
+        const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+
+        return this.itemsGameCDN[path];
+    }
+
+    getMusicKitNameURL(marketHashName) {
+        const reg = /Music Kit \| (.*)/;
+        const match = marketHashName.match(reg);
+
+        if (!match) return;
+
+        const kitName = match[1];
+        const tag = `#${this.csgoEnglish[kitName]}`;
+
+        const musicDefs = this.itemsGame.music_definitions;
+
+        const kit = Object.keys(musicDefs).find((n) => {
+            const k = musicDefs[n];
+
+            return k.loc_name === tag;
+        });
+
+        const path = `resource/flash/${musicDefs[kit].image_inventory}.png`;
+        return this.getPathURL(path);
+    }
+
     /**
      * Retrieves the given weapon or sticker CDN URL given its market_hash_name
      *
@@ -399,113 +500,17 @@ class CSGOImageCdn extends EventEmitter {
         marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '');
 
         if (marketHashName.startsWith('Sticker |')) {
-            const reg = /Sticker \| (.*)/;
-
-            const match = marketHashName.match(reg);
-
-            if (!match) return;
-
-            const stickerName = match[1];
-            const stickerTag = `#${this.csgoEnglish[stickerName]}`;
-
-            const stickerKits = this.itemsGame.sticker_kits;
-
-            const kitIndex = Object.keys(stickerKits).find((n) => {
-                const k = stickerKits[n];
-
-                return k.item_name === stickerTag;
-            });
-
-            return this.getStickerURL(stickerKits[kitIndex].name, true);
+            return this.getStickerNameURL(marketHashName);
         }
         else if (this.isWeapon(marketHashName)) {
-            const reg = /(.*) \| (.*) \(.*\)/;
-
-            const match = marketHashName.match(reg);
-
-            if (!match) return;
-
-            const weaponName = match[1];
-            const skinName = match[2];
-
-            const weaponTag = `#${this.csgoEnglish[weaponName]}`;
-            const skinTag = `#${this.csgoEnglish[skinName]}`;
-
-            const paintKits = this.itemsGame.paint_kits;
-
-            const paintindex = Object.keys(paintKits).find((n) => {
-                const kit = paintKits[n];
-
-                return kit.description_tag === skinTag;
-            });
-
-            const paintKit = paintKits[paintindex].name;
-
-            const prefabs = this.itemsGame.prefabs;
-
-            const prefab = Object.keys(prefabs).find((n) => {
-                 const fab = prefabs[n];
-
-                 return fab.item_name === weaponTag
-            });
-
-            let weaponClass;
-
-            if (!prefab) {
-                // special knives aren't in the prefab (karambits, etc...)
-                const items = this.itemsGame.items;
-
-                const item = Object.keys(items).find((n) => {
-                    const i = items[n];
-
-                    return i.item_name === weaponTag;
-                });
-
-                weaponClass = items[item].name;
-            }
-            else {
-                weaponClass = prefabs[prefab].item_class;
-            }
-
-            const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
-
-            return this.itemsGameCDN[path];
-        } else if (marketHashName.startsWith('Music Kit |')) {
-            const reg = /Music Kit \| (.*)/;
-
-            const match = marketHashName.match(reg);
-
-            if (!match) return;
-
-            const kitName = match[1];
-            const tag = `#${this.csgoEnglish[kitName]}`;
-
-            const musicDefs = this.itemsGame.music_definitions;
-
-            const kit = Object.keys(musicDefs).find((n) => {
-                const k = musicDefs[n];
-
-                return k.loc_name === tag;
-            });
-
-            let path = `resource/flash/${musicDefs[kit].image_inventory}.png`;
-
-            const file = this.vpkDir.getFile(path);
-
-            if (!file) return;
-
-            const sha1 = hasha(file, {
-                'algorithm': 'sha1'
-            });
-
-            path = path.replace('resource/flash', 'icons');
-            path = path.replace('.png', `.${sha1}.png`);
-
-            return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+            return this.getWeaponNameURL(marketHashName);
+        }
+        else if (marketHashName.startsWith('Music Kit |')) {
+            return this.getMusicKitNameURL(marketHashName);
         }
         else {
+            // Other in items
             const tag = `#${this.csgoEnglish[marketHashName]}`;
-
             const items = this.itemsGame.items;
 
             const item = Object.keys(items).find((n) => {
@@ -514,21 +519,8 @@ class CSGOImageCdn extends EventEmitter {
                 return i.item_name === tag;
             });
 
-
-            let path = `resource/flash/${items[item].image_inventory}.png`;
-
-            const file = this.vpkDir.getFile(path);
-
-            if (!file) return;
-
-            const sha1 = hasha(file, {
-                'algorithm': 'sha1'
-            });
-
-            path = path.replace('resource/flash', 'icons');
-            path = path.replace('.png', `.${sha1}.png`);
-
-            return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+            const path = `resource/flash/${items[item].image_inventory}.png`;
+            return this.getPathURL(path);
         }
     }
 }

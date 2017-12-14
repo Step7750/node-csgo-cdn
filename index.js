@@ -326,7 +326,7 @@ class CSGOImageCdn extends EventEmitter {
      * Example Sticker Names: cologne2016/nv, cologne2016/fntc_holo, cologne2016/fntc_foil, cluj2015/sig_olofmeister_gold
      *
      * You can find the sticker names from their relevant "sticker_material" fields in items_game.txt
-     *      items_game.txt can be found in the core game files of CS:GO
+     *      items_game.txt can be found in the core game files of CS:GO or as itemsGame here
      *
      * @param name The item name (the sticker_material field in items_game.txt, or the cdn file format)
      * @param large Whether to obtain the "large" CDN version of the item

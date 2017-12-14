@@ -1,6 +1,6 @@
 # node-csgo-image-cdn
 
-Retrieves the Steam CDN URLs for CS:GO Item Images
+Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name` or properties.
 
 ## Why?
 
@@ -51,7 +51,7 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
 **Note: If the item is a weapon, it MUST have an associated wear**
 
 
-### getStickerURL(stickerName, large=false)
+### getStickerURL(stickerName, large=true)
 
 * `stickerName` - Name of the sticker path from `items_game.txt` (ex. cluj2015/sig_olofmeister_gold)
 * `large` - Whether to obtain the large version of the image

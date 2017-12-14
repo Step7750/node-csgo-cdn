@@ -18,6 +18,10 @@ class CSGOStickers extends EventEmitter {
         return this.ready_ || false;
     }
 
+    get steamReady() {
+        return this.user.client.connected;
+    }
+
     set ready(r) {
         const old = this.ready;
         this.ready_ = r;
@@ -36,9 +40,14 @@ class CSGOStickers extends EventEmitter {
 
         this.user = Promise.promisifyAll(steamUser, {multiArgs: true});
 
-        this.updateLoop().catch((err) => {
-            throw err;
-        });
+        if (!this.steamReady) {
+            this.user.once('loggedOn', () => {
+                this.updateLoop();
+            })
+        }
+        else {
+            this.updateLoop();
+        }
     }
 
     /**
@@ -117,6 +126,8 @@ class CSGOStickers extends EventEmitter {
      * @return {Promise<void>}
      */
     async update() {
+        if (!this.steamReady) return;
+
         const manifestId = await this.getLatestManifestId();
         const savedManifestId = await this.getSavedManifestId();
 

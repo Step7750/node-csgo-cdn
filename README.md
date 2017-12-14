@@ -1,4 +1,4 @@
-# node-csgo-image-cdn
+# node-csgo-cdn
 
 Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name` or properties.
 
@@ -22,7 +22,7 @@ and prevents you from having to scrape it or host it yourself.
 ## How?
 
 Most of the graphical resources for CSGO are stored in [VDF](https://developer.valvesoftware.com/wiki/VPK_File_Format)
-files which include the sticker and graffiti images.
+files which include the sticker, music kit, tools, and status icon images.
 
 The root of a VDF contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
 the install directory of CS:GO, you'll see `pak01_003.vpk`, `pak01_004.vpk`, etc... where these files are located.
@@ -31,7 +31,7 @@ Thankfully, Valve was kind enough (as of writing this) to include all of the rel
 which is only ~400MB.
 
 This library, using node-steam-user, checks the manifest for any updates to the public branch of CS:GO, and if so,
-downloads only the required VPK packages that contain all sticker and graffiti images if they have changed from the
+downloads only the required VPK packages that contain all relevant images if they have changed from the
 content servers.
 
 When trying to retrieve a CDN image URL for a given item, the library takes the SHA1 hash of the file and the VDF
@@ -98,4 +98,4 @@ Parsed items_game_cdn.txt file as a dictionary
 
 ### ready
 
-Emitted when node-csgo-image-cdn is ready, this must be emitted before using the object
+Emitted when csgo-cdn is ready, this must be emitted before using the object

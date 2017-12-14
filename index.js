@@ -28,7 +28,7 @@ function bytesToMB(bytes) {
     return (bytes/1000000).toFixed(2);
 }
 
-class CSGOImageCdn extends EventEmitter {
+class CSGOCdn extends EventEmitter {
     get ready() {
         return this.ready_ || false;
     }
@@ -603,4 +603,4 @@ class CSGOImageCdn extends EventEmitter {
     }
 }
 
-module.exports = CSGOImageCdn;
+module.exports = CSGOCdn;

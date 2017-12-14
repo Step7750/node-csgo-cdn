@@ -1,6 +1,6 @@
 {
-  "name": "csgo-image-cdn",
-  "version": "0.0.1",
+  "name": "csgo-cdn",
+  "version": "1.0",
   "description": "Retrieves the Steam CDN URLs for CS:GO Item Images",
   "keywords": [
     "steam",
@@ -8,7 +8,8 @@
     "global offensive",
     "csgo",
     "stickers",
-    "cdn"
+    "cdn",
+    "images"
   ],
   "dependencies": {
     "bluebird": "^3.5.1",

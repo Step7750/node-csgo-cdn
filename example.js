@@ -23,6 +23,7 @@ csgo.on('ready', () => {
     console.log(csgo.getItemNameURL('Music Kit | Kelly Bailey, Hazardous Environments'));
     console.log(csgo.getItemNameURL('StatTrak™ AWP | Redline (Field-Tested)'));
     console.log(csgo.getItemNameURL('StatTrak™ Music Kit | Noisia, Sharpened'));
+    console.log(csgo.getItemNameURL('Sealed Graffiti | X-Axes (Tracer Yellow)'));
 });
 
 SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {

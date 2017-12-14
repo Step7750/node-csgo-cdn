@@ -10,7 +10,11 @@ const defaultConfig = {
     directory: 'data',
     updateInterval: 30000,
     stickers: true,
+    graffiti: true,
     musicKits: true,
+    cases: true,
+    tools: true,
+    statusIcons: true,
     logLevel: 'info'
 };
 
@@ -18,6 +22,7 @@ const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Batt
 
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
+    graffiti: 'resource/flash/econ/stickers/default',
     musicKits: 'resource/flash/econ/music_kits',
     cases: 'resource/flash/econ/weapon_cases',
     tools: 'resource/flash/econ/tools',
@@ -411,7 +416,7 @@ class CSGOCdn extends EventEmitter {
      *
      * @param defindex Item Definition Index (weapon type)
      * @param paintindex Item Paint Index (skin type)
-     * @return {*}
+     * @return {string|void} Weapon CDN URL
      */
     getWeaponURL(defindex, paintindex) {
         if (!this.ready) return;
@@ -480,6 +485,34 @@ class CSGOCdn extends EventEmitter {
         });
 
         return this.getStickerURL(stickerKits[kitIndex].name, true);
+    }
+
+    /**
+     * Returns the graffiti URL given the market hash name
+     * @param marketHashName Graffiti name (optional tint)
+     * @param large Whether to obtain the "large" CDN version of the item
+     * @return {string|void} CDN Image URL
+     */
+    getGraffitiNameURL(marketHashName, large=true) {
+        const reg = /Sealed Graffiti \| ([^(]*)/;
+        const match = marketHashName.match(reg);
+
+        if (!match) return;
+
+        const graffitiName = match[1].trim();
+        const stickerTag = `#${this.csgoEnglish[graffitiName]}`;
+
+        const stickerKits = this.itemsGame.sticker_kits;
+
+        const kitIndex = Object.keys(stickerKits).find((n) => {
+            const k = stickerKits[n];
+
+            return k.item_name === stickerTag;
+        });
+
+        console.log(stickerKits[kitIndex]);
+
+        return this.getStickerURL(stickerKits[kitIndex].sticker_material, true);
     }
 
     /**
@@ -577,14 +610,17 @@ class CSGOCdn extends EventEmitter {
     getItemNameURL(marketHashName) {
         marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '');
 
-        if (marketHashName.startsWith('Sticker |')) {
-            return this.getStickerNameURL(marketHashName);
-        }
-        else if (this.isWeapon(marketHashName)) {
+        if (this.isWeapon(marketHashName)) {
             return this.getWeaponNameURL(marketHashName);
+        }
+        else if (marketHashName.startsWith('Sticker |')) {
+            return this.getStickerNameURL(marketHashName);
         }
         else if (marketHashName.startsWith('Music Kit |')) {
             return this.getMusicKitNameURL(marketHashName);
+        }
+        else if (marketHashName.startsWith('Sealed Graffiti |')) {
+            return this.getGraffitiNameURL(marketHashName);
         }
         else {
             // Other in items
@@ -596,6 +632,11 @@ class CSGOCdn extends EventEmitter {
 
                 return i.item_name === tag;
             });
+
+            if (!items[item].image_inventory) {
+                this.log.error('Failed to obtain item VPK path, is it a supported item?');
+                return;
+            }
 
             const path = `resource/flash/${items[item].image_inventory}.png`;
             return this.getPathURL(path);

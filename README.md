@@ -4,6 +4,7 @@ Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name`
 
 Can retrieve CDN images for:
 * Stickers
+* Graffiti (without tint)
 * Weapons
 * Music Kits
 * Tools (Crate Keys, Stattrak Swap Tool, etc...)
@@ -51,10 +52,11 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
         updateInterval: 30000, // seconds between update checks, -1 to disable auto-updates
         logLevel: 'info', // logging level, (error, warn, info, verbose, debug, silly)
         stickers: true, // whether to obtain the vpk for stickers
+        graffiti: true, // whether to obtain the vpk for graffiti
         musicKits: true, // whether to obtain the vpk for music kits
-        cases: false, // whether to obtain the vpk for cases
-        tools: false, // whether to obtain the vpk for tools
-        statusIcons: false, // whether to obtain the vpk for status icons
+        cases: true, // whether to obtain the vpk for cases
+        tools: true, // whether to obtain the vpk for tools
+        statusIcons: true, // whether to obtain the vpk for status icons
     }
     ```
     

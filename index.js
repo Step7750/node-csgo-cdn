@@ -56,7 +56,7 @@ class CSGOImageCdn extends EventEmitter {
         if (!this.steamReady) {
             this.user.once('loggedOn', () => {
                 this.updateLoop();
-            })
+            });
         }
         else {
             this.updateLoop();
@@ -76,10 +76,24 @@ class CSGOImageCdn extends EventEmitter {
 
     /**
      * Runs the update loop at the specified config interval
-     * @return {Promise<undefined>}
+     * @return {Promise<undefined>|void}
      */
     updateLoop() {
-        return this.update().then(() => Promise.delay(this.config.updateInterval*1000)).then(() => this.updateLoop());
+        if (this.config.updateInterval > 0) {
+            return this.update().then(() => Promise.delay(this.config.updateInterval*1000))
+                .then(() => this.updateLoop());
+        }
+        else {
+            // Try to load the resources locally
+            try {
+                this.loadResources();
+                this.loadVPK();
+                this.ready = true;
+            } catch() {
+                // Doesn't have the needed files, update
+                this.update();
+            }
+        }
     }
 
     /**
@@ -180,6 +194,11 @@ class CSGOImageCdn extends EventEmitter {
         return items_game_cdn;
     }
 
+    /**
+     * Downloads the given VPK files from the Steam CDN
+     * @param files Steam Manifest File Array
+     * @return {Promise<>} Fulfilled when completed downloading
+     */
     async downloadFiles(files) {
         const promises = [];
 

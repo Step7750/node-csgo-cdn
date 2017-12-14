@@ -48,7 +48,7 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
     ```javascript
     {
         directory: 'data', // relative data directory for VPK files
-        updateInterval: 30000, // seconds between update checks
+        updateInterval: 30000, // seconds between update checks, -1 to disable auto-updates
         stickers: true, // whether to obtain the vpk for stickers
         musicKits: true, // whether to obtain the vpk for music kits
         cases: false, // whether to obtain the vpk for cases

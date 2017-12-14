@@ -1,6 +1,6 @@
 const SteamUser = require('steam-user');
 const SteamTotp = require('steam-totp');
-const CSGOStickers = require('./index');
+const csgoCDN = require('./index');
 
 const cred = {
     username: 'USERNAME',
@@ -9,7 +9,7 @@ const cred = {
 };
 
 const user = new SteamUser({enablePicsCache: true});
-const csgo = new CSGOStickers(user, {musicKits: true, cases: true, tools: true, statusIcons: true, logLevel: 'debug'});
+const csgo = new csgoCDN(user, {musicKits: true, cases: true, tools: true, statusIcons: true, logLevel: 'debug'});
 
 csgo.on('ready', () => {
     console.log(csgo.getStickerURL('cologne2016/astr_gold', false));

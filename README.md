@@ -61,6 +61,18 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
 
 ### `npm install csgo-cdn`
 
+#### See example.js
+```javascript
+const SteamUser = require('steam-user');
+const csgoCDN = require('csgo-cdn');
+
+const user = new SteamUser();
+const cdn = new csgoCDN(user, {logLevel: 'debug'});
+
+cdn.on('ready', () => {
+   console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
+});
+```
 
 ## Methods
 

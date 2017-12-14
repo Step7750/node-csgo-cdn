@@ -2,6 +2,14 @@
 
 Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name` or properties.
 
+Can retrieve CDN images for:
+    * Stickers
+    * Weapons
+    * Music Kits
+    * Tools (Crate Keys, Stattrak Swap Tool, etc...)
+    * Status Icons (Pins, ESports Trophies, Map Contribution Tokens, Service Medals, etc...)
+    
+
 ## Why?
 
 Steam hosts all of the CS:GO resource images on their CDN, but unfortunately finding the URL for them was
@@ -19,8 +27,8 @@ files which include the sticker and graffiti images.
 The root of a VDF contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
 the install directory of CS:GO, you'll see `pak01_003.vpk`, `pak01_004.vpk`, etc... where these files are located.
 
-Thankfully, Valve was kind enough (as of writing this) to include all of the sticker and graffiti images in packages 57
-and 83 which is only ~270MB.
+Thankfully, Valve was kind enough (as of writing this) to include all of the relevant images in packages 57, 83, and 84 
+which is only ~400MB.
 
 This library, using node-steam-user, checks the manifest for any updates to the public branch of CS:GO, and if so,
 downloads only the required VPK packages that contain all sticker and graffiti images if they have changed from the
@@ -41,6 +49,11 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
     {
         directory: 'data', // relative data directory for VPK files
         updateInterval: 30000, // seconds between update checks
+        stickers: true, // whether to obtain the vpk for stickers
+        musicKits: true, // whether to obtain the vpk for music kits
+        cases: false, // whether to obtain the vpk for cases
+        tools: false, // whether to obtain the vpk for tools
+        statusIcons: false, // whether to obtain the vpk for status icons
     }
     ```
     

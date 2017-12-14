@@ -444,6 +444,11 @@ class CSGOImageCdn extends EventEmitter {
         return this.itemsGameCDN[cdnName];
     }
 
+    /**
+     * Returns whether the given name is a weapon by checking for condition
+     * @param marketHashName Item name
+     * @return {boolean} Whether a weapon
+     */
     isWeapon(marketHashName) {
         for (const wear of wears) {
             if (marketHashName.includes(wear)) return true;
@@ -452,6 +457,11 @@ class CSGOImageCdn extends EventEmitter {
         return false;
     }
 
+    /**
+     * Returns the sticker URL given the market hash name
+     * @param marketHashName Sticker name
+     * @return {string|void} Sticker image URL
+     */
     getStickerNameURL(marketHashName) {
         const reg = /Sticker \| (.*)/;
         const match = marketHashName.match(reg);
@@ -472,6 +482,11 @@ class CSGOImageCdn extends EventEmitter {
         return this.getStickerURL(stickerKits[kitIndex].name, true);
     }
 
+    /**
+     * Returns the weapon URL given the market hash name
+     * @param marketHashName Weapon name
+     * @return {string|void} Weapon image URL
+     */
     getWeaponNameURL(marketHashName) {
         const reg = /(.*) \| (.*) \(.*\)/;
         const match = marketHashName.match(reg);
@@ -524,6 +539,11 @@ class CSGOImageCdn extends EventEmitter {
         return this.itemsGameCDN[path];
     }
 
+    /**
+     * Returns the music kit URL given the market hash name
+     * @param marketHashName Music kit name
+     * @return {string|void} Music kit image URL
+     */
     getMusicKitNameURL(marketHashName) {
         const reg = /Music Kit \| (.*)/;
         const match = marketHashName.match(reg);
@@ -546,13 +566,13 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
-     * Retrieves the given weapon or sticker CDN URL given its market_hash_name
+     * Retrieves the given item CDN URL given its market_hash_name
      *
      * Examples: M4A4 | 龍王 (Dragon King) (Field-Tested), Sticker | Robo, AWP | Redline (Field-Tested)
      *
      * Note: For a weapon, the name MUST have the associated wear
      *
-     * @param marketHashName
+     * @param marketHashName Item name
      */
     getItemNameURL(marketHashName) {
         marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '');

@@ -31,14 +31,6 @@ path that links to it to generate the corresponding URL.
 
 Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologne2015/mousesports.3e75da497d9f75fa56f463c22db25f29992561ce.png
 
-
-## What If I Want Weapon Images?
-
-You can find them in a CS:GO install directory as `items_game_cdn.txt`
-
-// I might add support for this in the library in the future
-
-
 ## Methods
 
 ### Constructor(client, options)

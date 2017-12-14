@@ -222,8 +222,6 @@ class CSGOImageCdn extends EventEmitter {
 
         const neededDirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
 
-        console.log(neededDirs);
-
         for (const fileName of vpkDir.files) {
             for (const dir of neededDirs) {
                 if (fileName.startsWith(dir)) {
@@ -429,9 +427,6 @@ class CSGOImageCdn extends EventEmitter {
 
             const weaponName = match[1];
             const skinName = match[2];
-
-            console.log(weaponName);
-            console.log(skinName);
 
             const weaponTag = `#${this.csgoEnglish[weaponName]}`;
             const skinTag = `#${this.csgoEnglish[skinName]}`;

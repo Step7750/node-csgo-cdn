@@ -62,6 +62,21 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
 * `defindex` - Definition index of the item (ex. 7 for AK-47)
 * `paintindex` - Paint index of the item (ex. 490 for Frontside Misty)
 
+## Properties
+
+### itemsGame
+
+Parsed items_game.txt file as a dictionary
+
+### csgoEnglish
+
+Parsed csgo_english file as a dictionary. Also contains all inverted keys, such that the values are also keys themselves
+for O(1) retrieval.
+
+### itemsGameCDN
+
+Parsed items_game_cdn.txt file as a dictionary
+
 ## Events
 
 ### ready

@@ -2,6 +2,7 @@ const Promise = require('bluebird');
 const EventEmitter = require('events');
 const fs = Promise.promisifyAll(require('fs'));
 const vpk = require('vpk');
+const vdf = require('simple-vdf');
 const hasha = require('hasha');
 
 const defaultConfig = {
@@ -134,19 +135,20 @@ class CSGOImageCdn extends EventEmitter {
         if (savedManifestId === manifestId) {
             // already downloaded, just load it
             if (!this.vpkDir) this.loadVPK();
+
+            if (!this.itemsGame || !this.itemsGameCDN) this.loadResources();
         }
         else {
             const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
             const manifestFiles = manifest.files;
 
             const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+            const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
+            const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
 
-            if (!dirFile) {
-                throw new Error('Failed to find VPK directory file in manifest');
-            }
+            await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile]);
 
-            await this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
-
+            this.loadResources();
             this.loadVPK();
 
             await this.downloadStickerFiles(this.vpkDir, manifestFiles);
@@ -155,6 +157,49 @@ class CSGOImageCdn extends EventEmitter {
         }
 
         this.ready = true;
+    }
+
+    loadResources() {
+        this.itemsGame = vdf.parse(fs.readFileSync(`${this.config.directory}/items_game.txt`, 'utf8'))['items_game'];
+        this.itemsGameCDN = this.parseItemsCDN(fs.readFileSync(`${this.config.directory}/items_game_cdn.txt`, 'utf8'));
+    }
+
+    parseItemsCDN(data) {
+        let lines = data.split('\n');
+
+        const items_game_cdn = {};
+
+        for (let line of lines) {
+            let kv = line.split('=');
+
+            if (kv[1]) {
+                items_game_cdn[kv[0]] = kv[1];
+            }
+        }
+
+        return items_game_cdn;
+    }
+
+    async downloadFiles(files) {
+        const promises = [];
+
+        for (const file of files) {
+            let name = file.filename.split('\\');
+            name = name[name.length-1];
+
+            const path = `${this.config.directory}/${name}`;
+
+            const isDownloaded = await this.isFileDownloaded(path, file.sha_content);
+
+            if (isDownloaded) {
+                continue;
+            }
+
+            const promise = this.user.downloadFileAsync(730, 731, file, `${this.config.directory}/${name}`);
+            promises.push(promise);
+        }
+
+        return promises;
     }
 
     /**
@@ -264,7 +309,7 @@ class CSGOImageCdn extends EventEmitter {
      * @param large Whether to obtain the "large" CDN version of the item
      * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-    getItemURL(name, large=false) {
+    getStickerURL(name, large=false) {
         if (!this.ready) {
             return;
         }
@@ -277,14 +322,54 @@ class CSGOImageCdn extends EventEmitter {
 
         const file = this.vpkDir.getFile(path);
 
-        const md5 = hasha(file, {
+        const sha1 = hasha(file, {
             'algorithm': 'sha1'
         });
 
         path = path.replace('resource/flash', 'icons');
-        path = path.replace('.png', `.${md5}.png`);
+        path = path.replace('.png', `.${sha1}.png`);
 
         return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+    }
+
+    /**
+     * Given the specified defindex and paintindex, returns the CDN URL
+     *
+     * The item properties can be found in items_game.txt
+     *
+     * @param defindex Item Definition Index (weapon type)
+     * @param paintindex Item Paint Index (skin type)
+     * @return {*}
+     */
+    getWeaponURL(defindex, paintindex) {
+        if (!this.ready) return;
+
+        const paintKits = this.itemsGame.paint_kits;
+
+        // Get the skin name
+        let skinName = '';
+
+        if (paintindex in paintKits) {
+            skinName = paintKits[iteminfo.paintindex].name;
+
+            if (skinName === 'default') {
+                skinName = '';
+            }
+        }
+
+        // Get the weapon name
+        let weaponName;
+
+        const items = this.itemsGame.items;
+
+        if (defindex in items) {
+            weaponName = items[iteminfo.defindex].name;
+        }
+
+        // Get the image url
+        const cdnName = `${weaponName}_${skinName}`;
+
+        return this.itemsGameCDN[cdnName];
     }
 }
 

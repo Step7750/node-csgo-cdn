@@ -63,6 +63,11 @@ You can find them in a CS:GO install directory as `items_game_cdn.txt`
 * `large` - Whether to obtain the large version of the image
 
 
+### getWeaponURL(defindex, paintindex)
+
+* `defindex` - Definition index of the item (ex. 7 for AK-47)
+* `paintindex` - Paint index of the item (ex. 490 for Frontside Misty)
+
 ## Events
 
 ### ready

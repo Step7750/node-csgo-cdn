@@ -2,12 +2,12 @@
 
 Retrieves the Steam CDN URLs for CS:GO Item Images
 
-##### TODO
+#### TODO
 - Add weapon images support
 - Add defindex support
 
 
-### Why?
+## Why?
 
 Steam hosts all of the CS:GO resource images on their CDN, but unfortunately finding the URL for them was
 difficult in the past and would require scraping the market or inventories.
@@ -16,7 +16,7 @@ This library allows you to retrieve the needed CDN URLs given the sticker name, 
 and prevents you from having to scrape it or host it yourself.
 
 
-### How?
+## How?
 
 Most of the graphical resources for CSGO are stored in [VDF](https://developer.valvesoftware.com/wiki/VPK_File_Format)
 files which include the sticker and graffiti images.
@@ -37,16 +37,16 @@ path that links to it to generate the corresponding URL.
 Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologne2015/mousesports.3e75da497d9f75fa56f463c22db25f29992561ce.png
 
 
-### What If I Want Weapon Images?
+## What If I Want Weapon Images?
 
 You can find them in a CS:GO install directory as `items_game_cdn.txt`
 
 // I might add support for this in the library in the future
 
 
-### Methods
+## Methods
 
-#### Constructor(client, options)
+### Constructor(client, options)
 
 * `client` - [node-steam-user](https://github.com/DoctorMcKay/node-steam-user) Client **The account MUST own CS:GO**
 * `options` - Options
@@ -57,14 +57,14 @@ You can find them in a CS:GO install directory as `items_game_cdn.txt`
     }
     ```
     
-#### getStickerURL(stickerName, large=false)
+### getStickerURL(stickerName, large=false)
 
 * `stickerName` - Name of the sticker path from `items_game.txt` (ex. cluj2015/sig_olofmeister_gold)
 * `large` - Whether to obtain the large version of the image
 
 
-### Events
+## Events
 
-#### ready
+### ready
 
 Emitted when node-csgo-image-cdn is ready, this must be emitted before using the object

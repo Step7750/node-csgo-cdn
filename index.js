@@ -509,9 +509,7 @@ class CSGOCdn extends EventEmitter {
 
             return k.item_name === stickerTag;
         });
-
-        console.log(stickerKits[kitIndex]);
-
+        
         return this.getStickerURL(stickerKits[kitIndex].sticker_material, true);
     }
 

@@ -145,8 +145,9 @@ class CSGOImageCdn extends EventEmitter {
             const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
             const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
             const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
+            const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));
 
-            await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile]);
+            await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile, csgoEnglishFile]);
 
             this.loadResources();
             this.loadVPK();
@@ -161,7 +162,29 @@ class CSGOImageCdn extends EventEmitter {
 
     loadResources() {
         this.itemsGame = vdf.parse(fs.readFileSync(`${this.config.directory}/items_game.txt`, 'utf8'))['items_game'];
+        this.csgoEnglish = vdf.parse(fs.readFileSync(`${this.config.directory}/csgo_english.txt`, 'ucs2'))['lang']['Tokens'];
         this.itemsGameCDN = this.parseItemsCDN(fs.readFileSync(`${this.config.directory}/items_game_cdn.txt`, 'utf8'));
+
+        this.invertDictionary(this.csgoEnglish);
+    }
+
+    /**
+     * Inverts the key mapping of a dictionary recursively while preserving the original keys
+     * @param dict Dictionary to invert
+     */
+    invertDictionary(dict) {
+        for (const prop in dict) {
+            if (!dict.hasOwnProperty(prop)) continue;
+
+            const val = dict[prop];
+
+            if (typeof val === 'object') {
+                this.invertDictionary(val);
+            }
+            else {
+                dict[val] = prop;
+            }
+        }
     }
 
     parseItemsCDN(data) {
@@ -309,7 +332,7 @@ class CSGOImageCdn extends EventEmitter {
      * @param large Whether to obtain the "large" CDN version of the item
      * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-    getStickerURL(name, large=false) {
+    getStickerURL(name, large=true) {
         if (!this.ready) {
             return;
         }
@@ -370,6 +393,86 @@ class CSGOImageCdn extends EventEmitter {
         const cdnName = `${weaponName}_${skinName}`;
 
         return this.itemsGameCDN[cdnName];
+    }
+
+    /**
+     *
+     * @param marketHashName
+     */
+    getItemNameURL(marketHashName) {
+        marketHashName = marketHashName.trim();
+
+        if (marketHashName.startsWith('Sticker |')) {
+            const reg = /Sticker \| (.*)/;
+
+            const match = marketHashName.match(reg);
+
+            if (!match) return;
+
+            const stickerName = match[1];
+            const stickerTag = `#${this.csgoEnglish[stickerName]}`;
+
+            const stickerKits = this.itemsGame.sticker_kits;
+
+            const kitIndex = Object.keys(stickerKits).find((n) => {
+                const k = stickerKits[n];
+
+                return k.item_name === stickerTag;
+            });
+
+            return this.getStickerURL(stickerKits[kitIndex].name, true);
+        }
+        else {
+            const reg = /(.*) \| (.*) \(.*\)/;
+
+            const match = marketHashName.match(reg);
+
+            if (!match) return;
+
+            const weaponName = match[1];
+            const skinName = match[2];
+
+            const weaponTag = `#${this.csgoEnglish[weaponName]}`;
+            const skinTag = `#${this.csgoEnglish[skinName]}`;
+
+            const paintKits = this.itemsGame.paint_kits;
+
+            const paintindex = Object.keys(paintKits).find((n) => {
+                const kit = paintKits[n];
+
+                return kit.description_tag === skinTag;
+            });
+
+            const paintKit = paintKits[paintindex].name;
+
+            const prefabs = this.itemsGame.prefabs;
+
+            const prefab = Object.keys(prefabs).find((n) => {
+                 const fab = prefabs[n];
+
+                 return fab.item_name === weaponTag
+            });
+
+            let weaponClass;
+
+            if (!prefab) {
+                // special knives aren't in the prefab (karambits, etc...)
+                const items = this.itemsGame.items;
+
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
+
+                    return i.item_name === weaponTag;
+                });
+
+                weaponClass = items[item].name;
+            }
+            else {
+                weaponClass = prefabs[prefab].item_class;
+            }
+
+            return this.itemsGameCDN[`${weaponClass}_${paintKit}`];
+        }
     }
 }
 

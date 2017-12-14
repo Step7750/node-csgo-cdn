@@ -3,6 +3,7 @@
 Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name` or properties.
 
 Can retrieve CDN images for:
+
     * Stickers
     * Weapons
     * Music Kits

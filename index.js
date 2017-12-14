@@ -19,11 +19,12 @@ class CSGOStickers extends EventEmitter {
     }
 
     set ready(r) {
-        if (r !== this.ready) {
+        const old = this.ready;
+        this.ready_ = r;
+
+        if (r !== old) {
             this.emit(r ? 'ready' : 'unready');
         }
-
-        this.ready_ = r;
     }
 
     constructor(steamUser, config={}) {
@@ -40,6 +41,9 @@ class CSGOStickers extends EventEmitter {
         });
     }
 
+    /**
+     * Creates the data directory specified in the config if it doesn't exist
+     */
     createDataDirectory() {
         const dir = `./${this.config.directory}`;
 
@@ -48,10 +52,17 @@ class CSGOStickers extends EventEmitter {
         }
     }
 
+    /**
+     * Runs the update loop at the specified config interval
+     * @return {Promise<undefined>}
+     */
     updateLoop() {
         return this.update().then(() => Promise.delay(this.config.updateInterval*1000)).then(() => this.updateLoop());
     }
 
+    /**
+     * Returns the product info for CSGO, with its depots and packages
+     */
     getProductInfo() {
         return new Promise((resolve, reject) => {
             this.user.getProductInfo([730], [], (apps, packages, unknownApps, unknownPackages) => {
@@ -60,6 +71,10 @@ class CSGOStickers extends EventEmitter {
         });
     }
 
+    /**
+     * Returns the latest CSGO manifest ID for the public 731 depot
+     * @return {*|PromiseLike<*[]>|Promise<*[]>} 731 Depot Manifest ID
+     */
     getLatestManifestId() {
         return this.getProductInfo().then(([apps, packages, unknownApps, unknownPackages]) => {
             const csgo = apps['730'].appinfo;
@@ -69,6 +84,10 @@ class CSGOStickers extends EventEmitter {
         });
     }
 
+    /**
+     * Returns the saved manifest ID for the current files
+     * @return {Promise<string>} Saved manifest ID
+     */
     async getSavedManifestId() {
         const path = `${this.config.directory}/manifestId`;
         const exists = fs.existsSync(path);
@@ -80,45 +99,69 @@ class CSGOStickers extends EventEmitter {
         return f.toString();
     }
 
+    /**
+     * Saves the given manifest ID to the file in the config
+     * @param id Manifest ID to save
+     * @return {*}
+     */
     saveManifestId(id) {
         return fs.writeFileAsync(`${this.config.directory}/manifestId`, id);
     }
 
+    /**
+     * Retrieves and updates the sticker file directory from Valve
+     *
+     * Ensures that only the required VPK files are downloaded and that files with the same SHA1 aren't
+     * redownloaded
+     *
+     * @return {Promise<void>}
+     */
     async update() {
         const manifestId = await this.getLatestManifestId();
         const savedManifestId = await this.getSavedManifestId();
 
-        if (manifestId === savedManifestId) {
-            console.log('Manifest already up to date');
-            this.ready = true;
-            return;
+        if (savedManifestId === manifestId) {
+            // already downloaded, just load it
+            if (!this.vpkDir) this.loadVPK();
+        }
+        else {
+            const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
+            const manifestFiles = manifest.files;
+
+            const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+
+            if (!dirFile) {
+                throw new Error('Failed to find VPK directory file in manifest');
+            }
+
+            await this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
+
+            this.loadVPK();
+
+            await this.downloadStickerFiles(this.vpkDir, manifestFiles);
+
+            this.saveManifestId(manifestId);
         }
 
-        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
-        const manifestFiles = manifest.files;
-
-        const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
-
-        if (!dirFile) {
-            throw new Error('Failed to find VPK directory file in manifest');
-        }
-
-        await this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
-
-        const vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
-        vpkDir.load();
-
-        await this.downloadStickerFiles(vpkDir, manifestFiles);
-
-        this.vpkDir = vpkDir;
-        this.vpkFiles = vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
-
-        this.saveManifestId(manifestId);
         this.ready = true;
     }
 
+    /**
+     * Loads the CSGO dir VPK specified in the config
+     */
+    loadVPK() {
+        this.vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
+        this.vpkDir.load();
+
+        this.vpkFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+    }
+
+    /**
+     * Given the CSGO VPK Directory, returns the necessary indices for stickers
+     * @param vpkDir CSGO VPK Directory
+     * @return {Array} Necessary Sticker VPK Indices
+     */
     getRequiredStickerFiles(vpkDir) {
-        // get required vpk files for the stickers
         const requiredIndices = [];
 
         for (const fileName of vpkDir.files) {
@@ -134,6 +177,12 @@ class CSGOStickers extends EventEmitter {
         return requiredIndices.sort();
     }
 
+    /**
+     * Downloads the required sticker VPK files
+     * @param vpkDir CSGO VPK Directory
+     * @param manifestFiles Manifest files
+     * @return {Promise<void>}
+     */
     async downloadStickerFiles(vpkDir, manifestFiles) {
         const requiredIndices = this.getRequiredStickerFiles(vpkDir);
 
@@ -147,8 +196,6 @@ class CSGOStickers extends EventEmitter {
 
             const file = manifestFiles.find((f) => f.filename.endsWith(fileName));
             const filePath = `${this.config.directory}/${fileName}`;
-
-            console.log(file.sha_content);
 
             const isDownloaded = await this.isFileDownloaded(filePath, file.sha_content);
 
@@ -177,18 +224,40 @@ class CSGOStickers extends EventEmitter {
         }
     }
 
-    async isFileDownloaded(path, md5) {
+    /**
+     * Returns whether a file at the given path has the given sha1
+     * @param path File path
+     * @param sha1 File SHA1 hash
+     * @return {Promise<boolean>} Whether the file has the hash
+     */
+    async isFileDownloaded(path, sha1) {
         try {
             const hash = await hasha.fromFile(path, {algorithm: 'sha1'});
 
-            return hash === md5;
+            return hash === sha1;
         }
         catch (e) {
             return false;
         }
     }
 
+    /**
+     * Returns the sticker Steam CDN URL for the specified sticker name
+     *
+     * Example Sticker Names: cologne2016/nv, cologne2016/fntc_holo, cologne2016/fntc_foil, cluj2015/sig_olofmeister_gold
+     *
+     * You can find the sticker names from their relevant "sticker_material" fields in items_game.txt
+     *      items_game.txt can be found in the core game files of CS:GO
+     *
+     * @param stickerName The sticker name (the sticker_material field in items_game.txt)
+     * @param large Whether to obtain the "large" CDN version of the sticker
+     * @return {string|void} If successful, the HTTPS CDN URL for the sticker
+     */
     getStickerURL(stickerName, large=false) {
+        if (!this.ready) {
+            return;
+        }
+
         const fileName = large ? `${stickerName}_large.png` : `${stickerName}.png`;
 
         let path = this.vpkFiles.find((t) => t.endsWith(fileName));
@@ -209,4 +278,3 @@ class CSGOStickers extends EventEmitter {
 }
 
 module.exports = CSGOStickers;
-

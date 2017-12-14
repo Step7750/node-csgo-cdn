@@ -1,14 +1,34 @@
 const Promise = require('bluebird');
+const EventEmitter = require('events');
 const fs = require('fs');
-
+const vpk = require('vpk');
+const hasha = require('hasha');
 
 const defaultConfig = {
     directory: 'data',
     updateInterval: 30000,
 };
 
-class CSGOStickers {
+function bytesToMB(bytes) {
+    return (bytes/1000000).toFixed(2);
+}
+
+class CSGOStickers extends EventEmitter {
+    get ready() {
+        return this.ready_ || false;
+    }
+
+    set ready(r) {
+        if (r != this.ready) {
+            this.emit(r ? 'ready' : 'unready');
+        }
+
+        this.ready_ = r;
+    }
+
     constructor(steamUser, config={}) {
+        super();
+
         this.config = Object.assign(defaultConfig, config);
 
         this.createDataDirectory();
@@ -23,7 +43,6 @@ class CSGOStickers {
     createDataDirectory() {
         const dir = `./${this.config.directory}`;
 
-        console.log(fs.existsSync(dir));
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir);
         }
@@ -44,7 +63,6 @@ class CSGOStickers {
     getLatestManifestId() {
         return this.getProductInfo().then(([apps, packages, unknownApps, unknownPackages]) => {
             const csgo = apps['730'].appinfo;
-            console.log(csgo);
             const commonDepot = csgo.depots['731'];
 
             return commonDepot.manifests.public;
@@ -52,12 +70,16 @@ class CSGOStickers {
     }
 
     update() {
+        let manifestFiles;
+        let vpkDir;
+
         return this.getLatestManifestId().then((manifestId) => {
-            console.log(manifestId);
             return this.user.getManifestAsync(730, 731, manifestId);
         }).then(([manifest]) => {
             // download the VPK directory
-            const dirFile = manifest.files.find((file) => file.filename.includes("pak01_dir.vpk"));
+            manifestFiles = manifest.files;
+
+            const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
 
             if (!dirFile) {
                 throw new Error('Failed to find VPK directory file in manifest');
@@ -65,12 +87,87 @@ class CSGOStickers {
 
             return this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
         }).then(() => {
-            console.log("Downloaded manifest");
+            vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
+            vpkDir.load();
+
+            return this.downloadStickerFiles(vpkDir, manifestFiles);
+        }).then(() => {
+            this.vpkDir = vpkDir;
+            this.vpkFiles = vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+
+            this.ready = true;
         });
     }
 
-    getStickerURL(stickerName) {
+    getRequiredStickerFiles(vpkDir) {
+        // get required vpk files for the stickers
+        const requiredIndices = [];
 
+        for (const fileName of vpkDir.files) {
+            if (fileName.startsWith('resource/flash/econ/stickers')) {
+                const archiveIndex = vpkDir.tree[fileName].archiveIndex;
+
+                if (!requiredIndices.includes(archiveIndex)) {
+                    requiredIndices.push(archiveIndex);
+                }
+            }
+        }
+
+        return requiredIndices.sort();
+    }
+
+    async downloadStickerFiles(vpkDir, manifestFiles) {
+        const requiredIndices = this.getRequiredStickerFiles(vpkDir);
+
+        for (const index in requiredIndices) {
+            index = parseInt(index);
+
+            // pad to 3 zeroes
+            const archiveIndex = requiredIndices[index];
+            const paddedIndex = '0'.repeat(3-archiveIndex.toString().length) + archiveIndex;
+            const fileName = `pak01_${paddedIndex}.vpk`;
+
+            const file = manifestFiles.find((f) => f.filename.endsWith(fileName));
+
+            console.log(file);
+
+            const status = `[${index+1}/${requiredIndices.length}]`;
+
+            console.log(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
+
+            const promise = new Promise((resolve, reject) => {
+                const ee = this.user.downloadFile(730, 731, file, `${this.config.directory}/${fileName}`, () => {
+                    resolve();
+                });
+
+                ee.on('progress', (bytesDownloaded, totalSize) => {
+                     console.log(`${status} ${(bytesDownloaded*100/totalSize).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSize)} MB`);
+                });
+            });
+
+            await promise;
+
+            console.log(`${status} Downloaded ${fileName}`);
+        }
+    }
+
+    getStickerURL(stickerName, large=false) {
+        const fileName = large ? `${stickerName}_large.png` : `${stickerName}.png`;
+
+        const path = this.vpkFiles.find((t) => t.endsWith(fileName));
+
+        if (!path) return;
+
+        const file = this.vpkDir.getFile(path);
+
+        const md5 = hasha(file, {
+            'algorithm': 'md5'
+        });
+
+        path = path.replace('resource/flash', 'icons');
+        path = path.replace('.png', `.${md5}.png`);
+
+        return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
     }
 }
 

@@ -398,7 +398,7 @@ class CSGOImageCdn extends EventEmitter {
      * @param marketHashName
      */
     getItemNameURL(marketHashName) {
-        marketHashName = marketHashName.trim();
+        marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '');
 
         if (marketHashName.startsWith('Sticker |')) {
             const reg = /Sticker \| (.*)/;
@@ -429,6 +429,9 @@ class CSGOImageCdn extends EventEmitter {
 
             const weaponName = match[1];
             const skinName = match[2];
+
+            console.log(weaponName);
+            console.log(skinName);
 
             const weaponTag = `#${this.csgoEnglish[weaponName]}`;
             const skinTag = `#${this.csgoEnglish[skinName]}`;

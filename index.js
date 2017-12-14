@@ -8,6 +8,18 @@ const hasha = require('hasha');
 const defaultConfig = {
     directory: 'data',
     updateInterval: 30000,
+    stickers: true,
+    musicKits: true,
+};
+
+const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
+
+const neededDirectories = {
+    stickers: 'resource/flash/econ/stickers',
+    musicKits: 'resource/flash/econ/music_kits',
+    cases: 'resource/flash/econ/weapon_cases',
+    tools: 'resource/flash/econ/tools',
+    statusIcons: 'resource/flash/econ/status_icons',
 };
 
 function bytesToMB(bytes) {
@@ -95,30 +107,6 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
-     * Returns the saved manifest ID for the current files
-     * @return {Promise<string>} Saved manifest ID
-     */
-    async getSavedManifestId() {
-        const path = `${this.config.directory}/manifestId`;
-        const exists = fs.existsSync(path);
-
-        if (!exists) return;
-
-        const f = await fs.readFileAsync(path);
-
-        return f.toString();
-    }
-
-    /**
-     * Saves the given manifest ID to the file in the config
-     * @param id Manifest ID to save
-     * @return {*}
-     */
-    saveManifestId(id) {
-        return fs.writeFileAsync(`${this.config.directory}/manifestId`, id);
-    }
-
-    /**
      * Retrieves and updates the sticker file directory from Valve
      *
      * Ensures that only the required VPK files are downloaded and that files with the same SHA1 aren't
@@ -130,32 +118,21 @@ class CSGOImageCdn extends EventEmitter {
         if (!this.steamReady) return;
 
         const manifestId = await this.getLatestManifestId();
-        const savedManifestId = await this.getSavedManifestId();
 
-        if (savedManifestId === manifestId) {
-            // already downloaded, just load it
-            if (!this.vpkDir) this.loadVPK();
+        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
+        const manifestFiles = manifest.files;
 
-            if (!this.itemsGame || !this.itemsGameCDN) this.loadResources();
-        }
-        else {
-            const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
-            const manifestFiles = manifest.files;
+        const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+        const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
+        const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
+        const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));
 
-            const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
-            const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
-            const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
-            const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));
+        await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile, csgoEnglishFile]);
 
-            await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile, csgoEnglishFile]);
+        this.loadResources();
+        this.loadVPK();
 
-            this.loadResources();
-            this.loadVPK();
-
-            await this.downloadStickerFiles(this.vpkDir, manifestFiles);
-
-            this.saveManifestId(manifestId);
-        }
+        await this.downloadVPKFiles(this.vpkDir, manifestFiles);
 
         this.ready = true;
     }
@@ -222,7 +199,7 @@ class CSGOImageCdn extends EventEmitter {
             promises.push(promise);
         }
 
-        return promises;
+        return Promise.all(promises);
     }
 
     /**
@@ -236,19 +213,27 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
-     * Given the CSGO VPK Directory, returns the necessary indices for stickers
+     * Given the CSGO VPK Directory, returns the necessary indices for the chosen options
      * @param vpkDir CSGO VPK Directory
      * @return {Array} Necessary Sticker VPK Indices
      */
-    getRequiredStickerFiles(vpkDir) {
+    getRequiredVPKFiles(vpkDir) {
         const requiredIndices = [];
 
-        for (const fileName of vpkDir.files) {
-            if (fileName.startsWith('resource/flash/econ/stickers')) {
-                const archiveIndex = vpkDir.tree[fileName].archiveIndex;
+        const neededDirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
 
-                if (!requiredIndices.includes(archiveIndex)) {
-                    requiredIndices.push(archiveIndex);
+        console.log(neededDirs);
+
+        for (const fileName of vpkDir.files) {
+            for (const dir of neededDirs) {
+                if (fileName.startsWith(dir)) {
+                    const archiveIndex = vpkDir.tree[fileName].archiveIndex;
+
+                    if (!requiredIndices.includes(archiveIndex)) {
+                        requiredIndices.push(archiveIndex);
+                    }
+
+                    break;
                 }
             }
         }
@@ -257,13 +242,13 @@ class CSGOImageCdn extends EventEmitter {
     }
 
     /**
-     * Downloads the required sticker VPK files
+     * Downloads the required VPK files
      * @param vpkDir CSGO VPK Directory
      * @param manifestFiles Manifest files
      * @return {Promise<void>}
      */
-    async downloadStickerFiles(vpkDir, manifestFiles) {
-        const requiredIndices = this.getRequiredStickerFiles(vpkDir);
+    async downloadVPKFiles(vpkDir, manifestFiles) {
+        const requiredIndices = this.getRequiredVPKFiles(vpkDir);
 
         for (let index in requiredIndices) {
             index = parseInt(index);
@@ -395,6 +380,14 @@ class CSGOImageCdn extends EventEmitter {
         return this.itemsGameCDN[cdnName];
     }
 
+    isWeapon(marketHashName) {
+        for (const wear of wears) {
+            if (marketHashName.includes(wear)) return true;
+        }
+
+        return false;
+    }
+
     /**
      * Retrieves the given weapon or sticker CDN URL given its market_hash_name
      *
@@ -427,7 +420,7 @@ class CSGOImageCdn extends EventEmitter {
 
             return this.getStickerURL(stickerKits[kitIndex].name, true);
         }
-        else {
+        else if (this.isWeapon(marketHashName)) {
             const reg = /(.*) \| (.*) \(.*\)/;
 
             const match = marketHashName.match(reg);
@@ -479,6 +472,65 @@ class CSGOImageCdn extends EventEmitter {
             const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
 
             return this.itemsGameCDN[path];
+        } else if (marketHashName.startsWith('Music Kit |')) {
+            const reg = /Music Kit \| (.*)/;
+
+            const match = marketHashName.match(reg);
+
+            if (!match) return;
+
+            const kitName = match[1];
+            const tag = `#${this.csgoEnglish[kitName]}`;
+
+            const musicDefs = this.itemsGame.music_definitions;
+
+            const kit = Object.keys(musicDefs).find((n) => {
+                const k = musicDefs[n];
+
+                return k.loc_name === tag;
+            });
+
+            let path = `resource/flash/${musicDefs[kit].image_inventory}.png`;
+
+            const file = this.vpkDir.getFile(path);
+
+            if (!file) return;
+
+            const sha1 = hasha(file, {
+                'algorithm': 'sha1'
+            });
+
+            path = path.replace('resource/flash', 'icons');
+            path = path.replace('.png', `.${sha1}.png`);
+
+            return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
+        }
+        else {
+            const tag = `#${this.csgoEnglish[marketHashName]}`;
+
+            const items = this.itemsGame.items;
+
+            const item = Object.keys(items).find((n) => {
+                const i = items[n];
+
+                return i.item_name === tag;
+            });
+
+
+            let path = `resource/flash/${items[item].image_inventory}.png`;
+
+            const file = this.vpkDir.getFile(path);
+
+            if (!file) return;
+
+            const sha1 = hasha(file, {
+                'algorithm': 'sha1'
+            });
+
+            path = path.replace('resource/flash', 'icons');
+            path = path.replace('.png', `.${sha1}.png`);
+
+            return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
         }
     }
 }

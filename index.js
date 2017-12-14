@@ -1,6 +1,6 @@
 const Promise = require('bluebird');
 const EventEmitter = require('events');
-const fs = require('fs');
+const fs = Promise.promisifyAll(require('fs'));
 const vpk = require('vpk');
 const hasha = require('hasha');
 
@@ -69,37 +69,52 @@ class CSGOStickers extends EventEmitter {
         });
     }
 
-    update() {
-        let manifestId;
-        let manifestFiles;
-        let vpkDir;
+    async getSavedManifestId() {
+        const path = `${this.config.directory}/manifestId`;
+        const exists = fs.existsSync(path);
 
-        return this.getLatestManifestId().then((id) => {
-              manifestId = id;
+        if (!exists) return;
 
-              return this.user.getManifestAsync(730, 731, manifestId);
-        }).then(([manifest]) => {
-            // download the VPK directory
-            manifestFiles = manifest.files;
+        const f = await fs.readFileAsync(path);
 
-            const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+        return f.toString();
+    }
 
-            if (!dirFile) {
-                throw new Error('Failed to find VPK directory file in manifest');
-            }
+    saveManifestId(id) {
+        return fs.writeFileAsync(`${this.config.directory}/manifestId`, id);
+    }
 
-            return this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
-        }).then(() => {
-            vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
-            vpkDir.load();
+    async update() {
+        const manifestId = await this.getLatestManifestId();
+        const savedManifestId = await this.getSavedManifestId();
 
-            return this.downloadStickerFiles(vpkDir, manifestFiles);
-        }).then(() => {
-            this.vpkDir = vpkDir;
-            this.vpkFiles = vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
-
+        if (manifestId === savedManifestId) {
+            console.log('Manifest already up to date');
             this.ready = true;
-        });
+            return;
+        }
+
+        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
+        const manifestFiles = manifest.files;
+
+        const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+
+        if (!dirFile) {
+            throw new Error('Failed to find VPK directory file in manifest');
+        }
+
+        await this.user.downloadFileAsync(730, 731, dirFile, this.config.directory + '/pak01_dir.vpk');
+
+        const vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
+        vpkDir.load();
+
+        await this.downloadStickerFiles(vpkDir, manifestFiles);
+
+        this.vpkDir = vpkDir;
+        this.vpkFiles = vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+
+        this.saveManifestId(manifestId);
+        this.ready = true;
     }
 
     getRequiredStickerFiles(vpkDir) {

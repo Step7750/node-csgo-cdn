@@ -24,6 +24,7 @@ Can retrieve CDN images for:
     * [itemsGame](https://github.com/Step7750/node-csgo-cdn#itemsgame)
     * [csgoEnglish](https://github.com/Step7750/node-csgo-cdn#csgoenglish)
     * [itemsGameCDN](https://github.com/Step7750/node-csgo-cdn#itemsgamecdn)
+    * [phase](https://github.com/Step7750/node-csgo-cdn#phase)
   * [Events](https://github.com/Step7750/node-csgo-cdn#events)
     * [ready](https://github.com/Step7750/node-csgo-cdn#ready)
     

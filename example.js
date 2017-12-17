@@ -9,21 +9,26 @@ const cred = {
 };
 
 const user = new SteamUser({enablePicsCache: true});
-const csgo = new csgoCDN(user, {musicKits: true, cases: true, tools: true, statusIcons: true, logLevel: 'debug'});
+const cdn = new csgoCDN(user, {musicKits: true, cases: true, tools: true, statusIcons: true, logLevel: 'debug'});
 
-csgo.on('ready', () => {
-    console.log(csgo.getStickerURL('cologne2016/astr_gold', false));
-    console.log(csgo.getStickerURL('cologne2016/astr_gold', true));
-    console.log(csgo.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
-    console.log(csgo.getItemNameURL('AWP | Redline (Field-Tested)'));
-    console.log(csgo.getItemNameURL('Sticker | Robo'));
-    console.log(csgo.getItemNameURL('Chroma 3 Case Key'));
-    console.log(csgo.getItemNameURL('Operation Phoenix Weapon Case'));
-    console.log(csgo.getItemNameURL('Operation Phoenix Pass'));
-    console.log(csgo.getItemNameURL('Music Kit | Kelly Bailey, Hazardous Environments'));
-    console.log(csgo.getItemNameURL('StatTrak™ AWP | Redline (Field-Tested)'));
-    console.log(csgo.getItemNameURL('StatTrak™ Music Kit | Noisia, Sharpened'));
-    console.log(csgo.getItemNameURL('Sealed Graffiti | X-Axes (Tracer Yellow)'));
+cdn.on('ready', () => {
+    console.log(cdn.getStickerURL('cologne2016/astr_gold', false));
+    console.log(cdn.getStickerURL('cologne2016/astr_gold', true));
+    console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
+    console.log(cdn.getItemNameURL('AWP | Redline (Field-Tested)'));
+    console.log(cdn.getItemNameURL('Sticker | Robo'));
+    console.log(cdn.getItemNameURL('Chroma 3 Case Key'));
+    console.log(cdn.getItemNameURL('Operation Phoenix Weapon Case'));
+    console.log(cdn.getItemNameURL('Operation Phoenix Pass'));
+    console.log(cdn.getItemNameURL('Music Kit | Kelly Bailey, Hazardous Environments'));
+    console.log(cdn.getItemNameURL('StatTrak™ AWP | Redline (Field-Tested)'));
+    console.log(cdn.getItemNameURL('StatTrak™ Music Kit | Noisia, Sharpened'));
+    console.log(cdn.getItemNameURL('Sealed Graffiti | X-Axes (Tracer Yellow)'));
+    console.log(cdn.getItemNameURL('★ Karambit | Gamma Doppler (Factory New)', cdn.phase.phase1));
+    console.log(cdn.getItemNameURL('★ Karambit | Gamma Doppler (Factory New)', cdn.phase.emerald));
+    console.log(cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.ruby));
+    console.log(cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.sapphire));
+    console.log(cdn.getItemNameURL('★ Huntsman Knife | Doppler (Factory New)', cdn.phase.blackpearl));
 });
 
 SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {

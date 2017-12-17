@@ -42,6 +42,19 @@ class CSGOCdn extends EventEmitter {
         return this.user.client.connected;
     }
 
+    get phase() {
+        return {
+            ruby: 'am_ruby_marbleized',
+            sapphire: 'am_sapphire_marbleized',
+            blackpearl: 'am_blackpearl_marbleized',
+            emerald: 'am_emerald_marbleized',
+            phase1: 'phase1',
+            phase2: 'phase2',
+            phase3: 'phase3',
+            phase4: 'phase4'
+        }
+    }
+
     set ready(r) {
         const old = this.ready;
         this.ready_ = r;
@@ -192,6 +205,8 @@ class CSGOCdn extends EventEmitter {
         this.itemsGame = vdf.parse(fs.readFileSync(`${this.config.directory}/items_game.txt`, 'utf8'))['items_game'];
         this.csgoEnglish = vdf.parse(fs.readFileSync(`${this.config.directory}/csgo_english.txt`, 'ucs2'))['lang']['Tokens'];
         this.itemsGameCDN = this.parseItemsCDN(fs.readFileSync(`${this.config.directory}/items_game_cdn.txt`, 'utf8'));
+
+        this.weaponNameMap = Object.keys(this.csgoEnglish).filter(n => n.startsWith("SFUI_WPNHUD"));
 
         this.invertDictionary(this.csgoEnglish);
     }
@@ -372,7 +387,7 @@ class CSGOCdn extends EventEmitter {
         const file = this.vpkDir.getFile(path);
 
         if (!file) {
-            this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`)
+            this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`);
             return;
         }
 
@@ -516,9 +531,10 @@ class CSGOCdn extends EventEmitter {
     /**
      * Returns the weapon URL given the market hash name
      * @param marketHashName Weapon name
+     * @param {string?} phase Optional Doppler Phase from the phase enum
      * @return {string|void} Weapon image URL
      */
-    getWeaponNameURL(marketHashName) {
+    getWeaponNameURL(marketHashName, phase) {
         const reg = /(.*) \| (.*) \(.*\)/;
         const match = marketHashName.match(reg);
 
@@ -527,15 +543,16 @@ class CSGOCdn extends EventEmitter {
         const weaponName = match[1];
         const skinName = match[2];
 
-        const weaponTag = `#${this.csgoEnglish[weaponName]}`;
+        const weaponTag = `#${this.weaponNameMap.find((n) => this.csgoEnglish[n] === weaponName)}`;
         const skinTag = `#${this.csgoEnglish[skinName]}`;
 
         const paintKits = this.itemsGame.paint_kits;
 
         const paintindex = Object.keys(paintKits).find((n) => {
             const kit = paintKits[n];
+            const isPhase = !phase || kit.name.endsWith(phase);
 
-            return kit.description_tag === skinTag;
+            return isPhase && kit.description_tag === skinTag;
         });
 
         const paintKit = paintKits[paintindex].name;
@@ -544,7 +561,7 @@ class CSGOCdn extends EventEmitter {
         const prefab = Object.keys(prefabs).find((n) => {
             const fab = prefabs[n];
 
-            return fab.item_name === weaponTag
+            return fab.item_name === weaponTag;
         });
 
         let weaponClass;
@@ -604,12 +621,13 @@ class CSGOCdn extends EventEmitter {
      * Note: For a weapon, the name MUST have the associated wear
      *
      * @param marketHashName Item name
+     * @param {string?} phase Optional Doppler Phase from the phase enum
      */
-    getItemNameURL(marketHashName) {
-        marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '');
+    getItemNameURL(marketHashName, phase) {
+        marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '').replace('★ ', '');
 
         if (this.isWeapon(marketHashName)) {
-            return this.getWeaponNameURL(marketHashName);
+            return this.getWeaponNameURL(marketHashName, phase);
         }
         else if (marketHashName.startsWith('Sticker |')) {
             return this.getStickerNameURL(marketHashName);

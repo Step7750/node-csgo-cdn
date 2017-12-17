@@ -5,7 +5,7 @@ Retrieves the Steam CDN URLs for CS:GO Item Images from their `market_hash_name`
 Can retrieve CDN images for:
 * Stickers
 * Graffiti (without tint)
-* Weapons
+* Weapons (and doppler phases)
 * Music Kits
 * Tools (Crate Keys, Cases, Stattrak Swap Tool, etc...)
 * Status Icons (Pins, ESports Trophies, Map Contribution Tokens, Service Medals, etc...)
@@ -71,6 +71,7 @@ const cdn = new csgoCDN(user, {logLevel: 'debug'});
 
 cdn.on('ready', () => {
    console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
+   console.log(cdn.getItemNameURL('★ Karambit | Gamma Doppler (Factory New)', cdn.phase.emerald));
 });
 ```
 
@@ -94,9 +95,10 @@ cdn.on('ready', () => {
     }
     ```
     
-### getItemNameURL(marketHashName)
+### getItemNameURL(marketHashName, phase)
 
 * `marketHashName` - The market hash name of an item (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
+* `phase` - Optional weapon phase for doppler skins from the `phase` enum property
 
 **Note: If the item is a weapon, it MUST have an associated wear**
 
@@ -129,6 +131,18 @@ for O(1) retrieval.
 ### itemsGameCDN
 
 Parsed items_game_cdn.txt file as a dictionary
+
+### phase
+
+Doppler phase enum used to specify the phase of a knife
+
+```javascript
+cdn.getItemNameURL('★ Karambit | Gamma Doppler (Factory New)', cdn.phase.emerald);
+cdn.getItemNameURL('★ Huntsman Knife | Doppler (Factory New)', cdn.phase.blackpearl);
+cdn.getItemNameURL('★ Huntsman Knife | Doppler (Factory New)', cdn.phase.phase1);
+cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.ruby);
+cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.sapphire);
+```
 
 ## Events
 

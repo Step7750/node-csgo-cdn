@@ -17,7 +17,7 @@ Can retrieve CDN images for:
   * [How to Install](https://github.com/Step7750/node-csgo-cdn#how-to-install)
   * [Methods](https://github.com/Step7750/node-csgo-cdn#methods)
     * [Constructor(client, options)](https://github.com/Step7750/node-csgo-cdn#constructorclient-options)
-    * [getItemNameURL(marketHashName)](https://github.com/Step7750/node-csgo-cdn#getitemnameurlmarkethashname)
+    * [getItemNameURL(marketHashName, phase)](https://github.com/Step7750/node-csgo-cdn#getitemnameurlmarkethashname-phase)
     * [getStickerURL(stickerName, large=true)](https://github.com/Step7750/node-csgo-cdn#getstickerurlstickername-largetrue)
     * [getWeaponURL(defindex, paintindex)](https://github.com/Step7750/node-csgo-cdn#getweaponurldefindex-paintindex)
   * [Properties](https://github.com/Step7750/node-csgo-cdn#properties)

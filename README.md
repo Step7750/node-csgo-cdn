@@ -46,8 +46,8 @@ files which include the sticker, music kit, tools, and status icon images.
 The root of a VDF contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
 the install directory of CS:GO, you'll see `pak01_003.vpk`, `pak01_004.vpk`, etc... where these files are located.
 
-Thankfully, Valve was kind enough (as of writing this) to include all of the relevant images in packages 57, 83, and 84 
-which is only ~400MB.
+Thankfully, Valve was kind enough (as of writing this) to include all of the relevant images in a few packages
+which are only ~400MB.
 
 This library, using node-steam-user, checks the manifest for any updates to the public branch of CS:GO, and if so,
 downloads only the required VPK packages that contain all relevant images if they have changed from the

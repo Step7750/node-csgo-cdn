@@ -16,6 +16,7 @@ cdn.on('ready', () => {
     console.log(cdn.getStickerURL('cologne2016/astr_gold', true));
     console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
     console.log(cdn.getItemNameURL('AWP | Redline (Field-Tested)'));
+    console.log(cdn.getItemNameURL('MP7 | Army Recon (Minimal Wear)'));
     console.log(cdn.getItemNameURL('Sticker | Robo'));
     console.log(cdn.getItemNameURL('Chroma 3 Case Key'));
     console.log(cdn.getItemNameURL('Operation Phoenix Weapon Case'));

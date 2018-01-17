@@ -208,6 +208,15 @@ class CSGOCdn extends EventEmitter {
 
         this.weaponNameMap = Object.keys(this.csgoEnglish).filter(n => n.startsWith("SFUI_WPNHUD"));
 
+        // Ensure paint kit descriptions are lowercase to resolve inconsistencies in the language and items_game file
+        Object.keys(this.itemsGame.paint_kits).forEach((n) => {
+            const kit = this.itemsGame.paint_kits[n];
+
+            if ('description_tag' in kit) {
+                kit.description_tag = kit.description_tag.toLowerCase();
+            }
+        });
+
         this.invertDictionary(this.csgoEnglish);
     }
 
@@ -544,7 +553,7 @@ class CSGOCdn extends EventEmitter {
         const skinName = match[2];
 
         const weaponTag = `#${this.weaponNameMap.find((n) => this.csgoEnglish[n] === weaponName)}`;
-        const skinTag = `#${this.csgoEnglish[skinName]}`;
+        const skinTag = `#${this.csgoEnglish[skinName].toLowerCase()}`;
 
         const paintKits = this.itemsGame.paint_kits;
 

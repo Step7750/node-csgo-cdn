@@ -617,10 +617,10 @@ class CSGOCdn extends EventEmitter {
 
                     let weaponClass;
 
+                    const items = this.itemsGame.items;
+
                     if (!prefab) {
                         // special knives aren't in the prefab (karambits, etc...)
-                        const items = this.itemsGame.items;
-
                         const item = Object.keys(items).find((n) => {
                             const i = items[n];
 
@@ -630,7 +630,13 @@ class CSGOCdn extends EventEmitter {
                         weaponClass = items[item].name;
                     }
                     else {
-                        weaponClass = prefabs[prefab].item_class;
+                        const item = Object.keys(items).find((n) => {
+                            const i = items[n];
+
+                            return i.prefab === prefab;
+                        });
+
+                        weaponClass = items[item].name;
                     }
 
                     const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;

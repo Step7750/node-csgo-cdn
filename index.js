@@ -627,7 +627,9 @@ class CSGOCdn extends EventEmitter {
                             return i.item_name === weaponTag;
                         });
 
-                        weaponClass = items[item].name;
+                        if (items[item]) {
+                            weaponClass = items[item].name;
+                        }
                     }
                     else {
                         const item = Object.keys(items).find((n) => {
@@ -636,7 +638,9 @@ class CSGOCdn extends EventEmitter {
                             return i.prefab === prefab;
                         });
 
-                        weaponClass = items[item].name;
+                        if (items[item]) {
+                            weaponClass = items[item].name;
+                        }
                     }
 
                     const path = (paintKit ? `${weaponClass}_${paintKit}` : weaponClass).toLowerCase();

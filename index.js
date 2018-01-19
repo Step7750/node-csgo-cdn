@@ -207,6 +207,7 @@ class CSGOCdn extends EventEmitter {
         this.itemsGameCDN = this.parseItemsCDN(fs.readFileSync(`${this.config.directory}/items_game_cdn.txt`, 'utf8'));
 
         this.weaponNameMap = Object.keys(this.csgoEnglish).filter(n => n.startsWith("SFUI_WPNHUD"));
+        this.csgoEnglishKeys = Object.keys(this.csgoEnglish);
 
         // Ensure paint kit descriptions are lowercase to resolve inconsistencies in the language and items_game file
         Object.keys(this.itemsGame.paint_kits).forEach((n) => {
@@ -553,47 +554,59 @@ class CSGOCdn extends EventEmitter {
         const skinName = match[2];
 
         const weaponTag = `#${this.weaponNameMap.find((n) => this.csgoEnglish[n] === weaponName)}`;
-        const skinTag = `#${this.csgoEnglish[skinName].toLowerCase()}`;
 
-        const paintKits = this.itemsGame.paint_kits;
+        // We have to iterate all the keys due to duplicate matches for the same skin name
+        for (const key of this.csgoEnglishKeys) {
+            const val = this.csgoEnglish[key];
 
-        const paintindex = Object.keys(paintKits).find((n) => {
-            const kit = paintKits[n];
-            const isPhase = !phase || kit.name.endsWith(phase);
+            if (val !== skinName) continue;
 
-            return isPhase && kit.description_tag === skinTag;
-        });
+            const skinTag = `#${key.toLowerCase()}`;
 
-        const paintKit = paintKits[paintindex].name;
+            const paintKits = this.itemsGame.paint_kits;
 
-        const prefabs = this.itemsGame.prefabs;
-        const prefab = Object.keys(prefabs).find((n) => {
-            const fab = prefabs[n];
+            const paintindex = Object.keys(paintKits).find((n) => {
+                const kit = paintKits[n];
+                const isPhase = !phase || kit.name.endsWith(phase);
 
-            return fab.item_name === weaponTag;
-        });
-
-        let weaponClass;
-
-        if (!prefab) {
-            // special knives aren't in the prefab (karambits, etc...)
-            const items = this.itemsGame.items;
-
-            const item = Object.keys(items).find((n) => {
-                const i = items[n];
-
-                return i.item_name === weaponTag;
+                return isPhase && kit.description_tag === skinTag;
             });
 
-            weaponClass = items[item].name;
-        }
-        else {
-            weaponClass = prefabs[prefab].item_class;
-        }
+            const paintKit = paintKits[paintindex].name;
 
-        const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+            console.log(paintKit);
 
-        return this.itemsGameCDN[path];
+            const prefabs = this.itemsGame.prefabs;
+            const prefab = Object.keys(prefabs).find((n) => {
+                const fab = prefabs[n];
+
+                return fab.item_name === weaponTag;
+            });
+
+            let weaponClass;
+
+            if (!prefab) {
+                // special knives aren't in the prefab (karambits, etc...)
+                const items = this.itemsGame.items;
+
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
+
+                    return i.item_name === weaponTag;
+                });
+
+                weaponClass = items[item].name;
+            }
+            else {
+                weaponClass = prefabs[prefab].item_class;
+            }
+
+            const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+
+            if (this.itemsGameCDN[path]) {
+                return this.itemsGameCDN[path];
+            }
+        }
     }
 
     /**

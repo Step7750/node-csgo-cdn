@@ -30,6 +30,7 @@ cdn.on('ready', () => {
     console.log(cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.ruby));
     console.log(cdn.getItemNameURL('★ Flip Knife | Doppler (Minimal Wear)', cdn.phase.sapphire));
     console.log(cdn.getItemNameURL('★ Huntsman Knife | Doppler (Factory New)', cdn.phase.blackpearl));
+    console.log(cdn.getItemNameURL('AK-47 | Black Laminate (Field-Tested)'));
 });
 
 SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {

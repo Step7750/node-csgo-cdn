@@ -574,8 +574,6 @@ class CSGOCdn extends EventEmitter {
 
             const paintKit = paintKits[paintindex].name;
 
-            console.log(paintKit);
-
             const prefabs = this.itemsGame.prefabs;
             const prefab = Object.keys(prefabs).find((n) => {
                 const fab = prefabs[n];
@@ -646,7 +644,15 @@ class CSGOCdn extends EventEmitter {
      * @param {string?} phase Optional Doppler Phase from the phase enum
      */
     getItemNameURL(marketHashName, phase) {
-        marketHashName = marketHashName.trim().replace('StatTrak™ ', '').replace('Souvenir ', '').replace('★ ', '');
+        marketHashName = marketHashName.trim();
+
+        const extraTags = ['★ ', 'StatTrak™ ', 'Souvenir '];
+
+        for (const tag of extraTags) {
+            if (marketHashName.startsWith(tag)) {
+                marketHashName = marketHashName.replace(tag, '');
+            }
+        }
 
         if (this.isWeapon(marketHashName)) {
             return this.getWeaponNameURL(marketHashName, phase);

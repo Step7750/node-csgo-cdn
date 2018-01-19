@@ -731,18 +731,31 @@ class CSGOCdn extends EventEmitter {
             for (const t of this.csgoEnglish['inverted'][marketHashName] || []) {
                 const tag = `#${t}`;
                 const items = this.itemsGame.items;
+                const prefabs = this.itemsGame.prefabs;
 
-                const item = Object.keys(items).find((n) => {
+                let item = Object.keys(items).find((n) => {
                     const i = items[n];
 
                     return i.item_name === tag;
                 });
 
-                if (!items[item] || !items[item].image_inventory) {
-                    continue;
-                }
+                let path;
 
-                const path = `resource/flash/${items[item].image_inventory}.png`;
+                if (!items[item] || !items[item].image_inventory) {
+                    // search the prefabs (ex. CS:GO Case Key)
+                    item = Object.keys(prefabs).find((n) => {
+                        const i = prefabs[n];
+
+                        return i.item_name === tag;
+                    });
+
+                    if (!prefabs[item] || !prefabs[item].image_inventory) continue;
+
+                    path = `resource/flash/${prefabs[item].image_inventory}.png`;
+                }
+                else {
+                    path = `resource/flash/${items[item].image_inventory}.png`;
+                }
 
                 const url = this.getPathURL(path);
 

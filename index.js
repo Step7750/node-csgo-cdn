@@ -639,7 +639,7 @@ class CSGOCdn extends EventEmitter {
                         weaponClass = items[item].name;
                     }
 
-                    const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+                    const path = (paintKit ? `${weaponClass}_${paintKit}` : weaponClass).toLowerCase();
 
                     if (this.itemsGameCDN[path]) {
                         return this.itemsGameCDN[path];

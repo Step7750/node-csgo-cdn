@@ -703,23 +703,25 @@ class CSGOCdn extends EventEmitter {
      */
     getItemNameURL(marketHashName, phase) {
         marketHashName = marketHashName.trim();
+        let strippedMarketHashName = marketHashName;
 
+        // Weapons and Music Kits can have extra tags we need to ignore
         const extraTags = ['★ ', 'StatTrak™ ', 'Souvenir '];
 
         for (const tag of extraTags) {
-            if (marketHashName.startsWith(tag)) {
-                marketHashName = marketHashName.replace(tag, '');
+            if (strippedMarketHashName.startsWith(tag)) {
+                strippedMarketHashName = strippedMarketHashName.replace(tag, '');
             }
         }
 
-        if (this.isWeapon(marketHashName)) {
-            return this.getWeaponNameURL(marketHashName, phase);
+        if (this.isWeapon(strippedMarketHashName)) {
+            return this.getWeaponNameURL(strippedMarketHashName, phase);
+        }
+        else if (strippedMarketHashName.startsWith('Music Kit |')) {
+            return this.getMusicKitNameURL(strippedMarketHashName);
         }
         else if (marketHashName.startsWith('Sticker |')) {
             return this.getStickerNameURL(marketHashName);
-        }
-        else if (marketHashName.startsWith('Music Kit |')) {
-            return this.getMusicKitNameURL(marketHashName);
         }
         else if (marketHashName.startsWith('Sealed Graffiti |')) {
             return this.getGraffitiNameURL(marketHashName);

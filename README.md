@@ -101,7 +101,7 @@ cdn.on('ready', () => {
 * `marketHashName` - The market hash name of an item (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
 * `phase` - Optional weapon phase for doppler skins from the `phase` enum property
 
-**Note: If the item is a weapon, you can omit the wear (ex. `AK-47` or `★ Karambit`)**
+**Note: If the item is a weapon, you can omit the wear (ex. `AWP | Redline`)**
 
 Ensure that you have enabled the relevant VPK downloading for the item category by using the options in the constructor.
 

@@ -33,6 +33,8 @@ cdn.on('ready', () => {
     console.log(cdn.getItemNameURL('AK-47 | Black Laminate (Field-Tested)'));
     console.log(cdn.getItemNameURL('Boston 2018 Inferno Souvenir Package'));
     console.log(cdn.getItemNameURL('CS:GO Case Key'));
+    console.log(cdn.getItemNameURL('★ Karambit'));
+    console.log(cdn.getItemNameURL('AK-47'));
 });
 
 SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {

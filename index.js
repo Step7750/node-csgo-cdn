@@ -615,8 +615,16 @@ class CSGOCdn extends EventEmitter {
      * @return {string|void} Weapon image URL
      */
     getWeaponNameURL(marketHashName, phase) {
-        const reg = /(.*) \| (.*) \(.*\)/;
-        const match = marketHashName.match(reg);
+        let match;
+
+        // Account for vanilla items
+        if (marketHashName.includes('|')) {
+            const reg = /(.*) \| (.*) \(.*\)/;
+            match = marketHashName.match(reg);
+        }
+        else {
+            match = [marketHashName, marketHashName];
+        }
 
         if (!match) return;
 
@@ -624,62 +632,73 @@ class CSGOCdn extends EventEmitter {
         const skinName = match[2];
 
         const weaponTags = this.csgoEnglish['inverted'][weaponName] || [];
+        const prefabs = this.itemsGame.prefabs;
+        const items = this.itemsGame.items;
 
-        // For every matching skin name...
-        for (const key of this.csgoEnglish['inverted'][skinName] || []) {
-            const skinTag = `#${key.toLowerCase()}`;
+        // For every matching weapon tag...
+        for (const t of weaponTags) {
+            const weaponTag = `#${t}`;
 
-            const paintKits = this.itemsGame.paint_kits;
+            const prefab = Object.keys(prefabs).find((n) => {
+                const fab = prefabs[n];
 
-            const paintindexes = Object.keys(paintKits).filter((n) => {
-                const kit = paintKits[n];
-                const isPhase = !phase || kit.name.endsWith(phase);
-
-                return isPhase && kit.description_tag === skinTag;
+                return fab.item_name === weaponTag;
             });
 
-            // For every matching paint index...
-            for (const paintindex of paintindexes) {
-                const paintKit = paintKits[paintindex].name;
-                const prefabs = this.itemsGame.prefabs;
+            let weaponClass;
 
-                // For every matching weapon tag...
-                for (const t of weaponTags) {
-                    const weaponTag = `#${t}`;
+            if (!prefab) {
+                // special knives aren't in the prefab (karambits, etc...)
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
 
-                    const prefab = Object.keys(prefabs).find((n) => {
-                        const fab = prefabs[n];
+                    return i.item_name === weaponTag;
+                });
 
-                        return fab.item_name === weaponTag;
-                    });
+                if (items[item]) {
+                    weaponClass = items[item].name;
+                }
+            }
+            else {
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
 
-                    let weaponClass;
+                    return i.prefab === prefab;
+                });
 
-                    const items = this.itemsGame.items;
+                if (items[item]) {
+                    weaponClass = items[item].name;
+                }
+            }
 
-                    if (!prefab) {
-                        // special knives aren't in the prefab (karambits, etc...)
-                        const item = Object.keys(items).find((n) => {
-                            const i = items[n];
+            if (!weaponClass) continue;
 
-                            return i.item_name === weaponTag;
-                        });
+            // Check if this is a vanilla weapon
+            if (!skinName) {
+                if (weaponClass && this.itemsGameCDN[weaponClass]) {
+                    return this.itemsGameCDN[weaponClass];
+                }
+                else {
+                    continue;
+                }
+            }
 
-                        if (items[item]) {
-                            weaponClass = items[item].name;
-                        }
-                    }
-                    else {
-                        const item = Object.keys(items).find((n) => {
-                            const i = items[n];
+            // For every matching skin name...
+            for (const key of this.csgoEnglish['inverted'][skinName] || []) {
+                const skinTag = `#${key.toLowerCase()}`;
 
-                            return i.prefab === prefab;
-                        });
+                const paintKits = this.itemsGame.paint_kits;
 
-                        if (items[item]) {
-                            weaponClass = items[item].name;
-                        }
-                    }
+                const paintindexes = Object.keys(paintKits).filter((n) => {
+                    const kit = paintKits[n];
+                    const isPhase = !phase || kit.name.endsWith(phase);
+
+                    return isPhase && kit.description_tag === skinTag;
+                });
+
+                // For every matching paint index...
+                for (const paintindex of paintindexes) {
+                    const paintKit = paintKits[paintindex].name;
 
                     const path = (paintKit ? `${weaponClass}_${paintKit}` : weaponClass).toLowerCase();
 

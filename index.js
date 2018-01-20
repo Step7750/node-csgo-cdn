@@ -729,14 +729,14 @@ class CSGOCdn extends EventEmitter {
         else {
             // Other in items
             for (const t of this.csgoEnglish['inverted'][marketHashName] || []) {
-                const tag = `#${t}`;
+                const tag = `#${t.toLowerCase()}`;
                 const items = this.itemsGame.items;
                 const prefabs = this.itemsGame.prefabs;
 
                 let item = Object.keys(items).find((n) => {
                     const i = items[n];
 
-                    return i.item_name === tag;
+                    return i.item_name && i.item_name.toLowerCase() === tag;
                 });
 
                 let path;
@@ -746,7 +746,7 @@ class CSGOCdn extends EventEmitter {
                     item = Object.keys(prefabs).find((n) => {
                         const i = prefabs[n];
 
-                        return i.item_name === tag;
+                        return i.item_name && i.item_name.toLowerCase() === tag;
                     });
 
                     if (!prefabs[item] || !prefabs[item].image_inventory) continue;

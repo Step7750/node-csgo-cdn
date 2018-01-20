@@ -35,6 +35,8 @@ cdn.on('ready', () => {
     console.log(cdn.getItemNameURL('CS:GO Case Key'));
     console.log(cdn.getItemNameURL('★ Karambit'));
     console.log(cdn.getItemNameURL('AK-47'));
+    console.log(cdn.getItemNameURL('★ Karambit | Forest DDPAT'));
+    console.log(cdn.getItemNameURL('AWP | Redline'));
 });
 
 SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {

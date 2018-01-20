@@ -18,8 +18,6 @@ const defaultConfig = {
     logLevel: 'info'
 };
 
-const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
-
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
     graffiti: 'resource/flash/econ/stickers/default',
@@ -223,19 +221,29 @@ class CSGOCdn extends EventEmitter {
 
     /**
      * Inverts the key mapping of a dictionary recursively while preserving the original keys
+     *
+     * Duplicate values with be an array
+     *
      * @param dict Dictionary to invert
      */
     invertDictionary(dict) {
+        dict['inverted'] = {};
+
         for (const prop in dict) {
-            if (!dict.hasOwnProperty(prop)) continue;
+            if (prop === 'inverted' || !dict.hasOwnProperty(prop)) continue;
 
             const val = dict[prop];
 
-            if (typeof val === 'object') {
+            if (typeof val === 'object' && !(val instanceof Array)) {
                 this.invertDictionary(val);
             }
             else {
-                dict[val] = prop;
+                if (dict['inverted'][val] === undefined) {
+                    dict['inverted'][val] = [prop];
+                }
+                else {
+                    dict['inverted'][val].push(prop);
+                }
             }
         }
     }
@@ -480,8 +488,48 @@ class CSGOCdn extends EventEmitter {
      * @return {boolean} Whether a weapon
      */
     isWeapon(marketHashName) {
-        for (const wear of wears) {
-            if (marketHashName.includes(wear)) return true;
+        const prefabs = this.itemsGame.prefabs;
+        const items = this.itemsGame.items;
+        const weaponName = marketHashName.split('|')[0].trim();
+
+        const weaponTags = this.csgoEnglish['inverted'][weaponName];
+
+        if (!weaponTags) return false;
+
+        // For every matching weapon tag...
+        for (const t of weaponTags) {
+            const weaponTag = `#${t}`;
+
+            const prefab = Object.keys(prefabs).find((n) => {
+                const fab = prefabs[n];
+
+                return fab.item_name === weaponTag;
+            });
+
+            let fab;
+
+            if (!prefab) {
+                // special knives aren't in the prefab (karambits, etc...)
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
+
+                    return i.item_name === weaponTag;
+                });
+
+                fab = items[item];
+            }
+            else {
+                fab = prefabs[prefab];
+            }
+
+            if (fab && fab.used_by_classes) {
+                const used = fab.used_by_classes;
+
+                // Ensure that the item is used by one of the sides
+                if (used['terrorists'] || used['counter-terrorists']) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -499,17 +547,28 @@ class CSGOCdn extends EventEmitter {
         if (!match) return;
 
         const stickerName = match[1];
-        const stickerTag = `#${this.csgoEnglish[stickerName]}`;
 
-        const stickerKits = this.itemsGame.sticker_kits;
+        for (const tag of this.csgoEnglish['inverted'][stickerName] || []) {
+            const stickerTag = `#${tag}`;
 
-        const kitIndex = Object.keys(stickerKits).find((n) => {
-            const k = stickerKits[n];
+            const stickerKits = this.itemsGame.sticker_kits;
 
-            return k.item_name === stickerTag;
-        });
+            const kitIndex = Object.keys(stickerKits).find((n) => {
+                const k = stickerKits[n];
 
-        return this.getStickerURL(stickerKits[kitIndex].sticker_material, true);
+                return k.item_name === stickerTag;
+            });
+
+            const kit  = stickerKits[kitIndex];
+
+            if (!kit || !kit.sticker_material) continue;
+
+            const url = this.getStickerURL(stickerKits[kitIndex].sticker_material, true);
+
+            if (url) {
+                return url;
+            }
+        }
     }
 
     /**
@@ -525,17 +584,28 @@ class CSGOCdn extends EventEmitter {
         if (!match) return;
 
         const graffitiName = match[1].trim();
-        const stickerTag = `#${this.csgoEnglish[graffitiName]}`;
 
-        const stickerKits = this.itemsGame.sticker_kits;
+        for (const tag of this.csgoEnglish['inverted'][graffitiName] || []) {
+            const stickerTag = `#${tag}`;
 
-        const kitIndex = Object.keys(stickerKits).find((n) => {
-            const k = stickerKits[n];
+            const stickerKits = this.itemsGame.sticker_kits;
 
-            return k.item_name === stickerTag;
-        });
+            const kitIndex = Object.keys(stickerKits).find((n) => {
+                const k = stickerKits[n];
 
-        return this.getStickerURL(stickerKits[kitIndex].sticker_material, true);
+                return k.item_name === stickerTag;
+            });
+
+            const kit = stickerKits[kitIndex];
+
+            if (!kit || !kit.sticker_material) continue;
+
+            const url = this.getStickerURL(kit.sticker_material, true);
+
+            if (url) {
+                return url;
+            }
+        }
     }
 
     /**
@@ -545,36 +615,30 @@ class CSGOCdn extends EventEmitter {
      * @return {string|void} Weapon image URL
      */
     getWeaponNameURL(marketHashName, phase) {
-        const reg = /(.*) \| (.*) \(.*\)/;
-        const match = marketHashName.match(reg);
+        let match;
+
+        // Account for vanilla items
+        if (marketHashName.includes('|')) {
+            const reg = /(.*) \| (.*) \(.*\)/;
+            match = marketHashName.match(reg);
+        }
+        else {
+            match = [marketHashName, marketHashName];
+        }
 
         if (!match) return;
 
         const weaponName = match[1];
         const skinName = match[2];
 
-        const weaponTag = `#${this.weaponNameMap.find((n) => this.csgoEnglish[n] === weaponName)}`;
+        const weaponTags = this.csgoEnglish['inverted'][weaponName] || [];
+        const prefabs = this.itemsGame.prefabs;
+        const items = this.itemsGame.items;
 
-        // We have to iterate all the keys due to duplicate matches for the same skin name
-        for (const key of this.csgoEnglishKeys) {
-            const val = this.csgoEnglish[key];
+        // For every matching weapon tag...
+        for (const t of weaponTags) {
+            const weaponTag = `#${t}`;
 
-            if (val !== skinName) continue;
-
-            const skinTag = `#${key.toLowerCase()}`;
-
-            const paintKits = this.itemsGame.paint_kits;
-
-            const paintindex = Object.keys(paintKits).find((n) => {
-                const kit = paintKits[n];
-                const isPhase = !phase || kit.name.endsWith(phase);
-
-                return isPhase && kit.description_tag === skinTag;
-            });
-
-            const paintKit = paintKits[paintindex].name;
-
-            const prefabs = this.itemsGame.prefabs;
             const prefab = Object.keys(prefabs).find((n) => {
                 const fab = prefabs[n];
 
@@ -585,24 +649,63 @@ class CSGOCdn extends EventEmitter {
 
             if (!prefab) {
                 // special knives aren't in the prefab (karambits, etc...)
-                const items = this.itemsGame.items;
-
                 const item = Object.keys(items).find((n) => {
                     const i = items[n];
 
                     return i.item_name === weaponTag;
                 });
 
-                weaponClass = items[item].name;
+                if (items[item]) {
+                    weaponClass = items[item].name;
+                }
             }
             else {
-                weaponClass = prefabs[prefab].item_class;
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
+
+                    return i.prefab === prefab;
+                });
+
+                if (items[item]) {
+                    weaponClass = items[item].name;
+                }
             }
 
-            const path = paintKit ? `${weaponClass}_${paintKit}` : weaponClass;
+            if (!weaponClass) continue;
 
-            if (this.itemsGameCDN[path]) {
-                return this.itemsGameCDN[path];
+            // Check if this is a vanilla weapon
+            if (!skinName) {
+                if (weaponClass && this.itemsGameCDN[weaponClass]) {
+                    return this.itemsGameCDN[weaponClass];
+                }
+                else {
+                    continue;
+                }
+            }
+
+            // For every matching skin name...
+            for (const key of this.csgoEnglish['inverted'][skinName] || []) {
+                const skinTag = `#${key.toLowerCase()}`;
+
+                const paintKits = this.itemsGame.paint_kits;
+
+                const paintindexes = Object.keys(paintKits).filter((n) => {
+                    const kit = paintKits[n];
+                    const isPhase = !phase || kit.name.endsWith(phase);
+
+                    return isPhase && kit.description_tag === skinTag;
+                });
+
+                // For every matching paint index...
+                for (const paintindex of paintindexes) {
+                    const paintKit = paintKits[paintindex].name;
+
+                    const path = (paintKit ? `${weaponClass}_${paintKit}` : weaponClass).toLowerCase();
+
+                    if (this.itemsGameCDN[path]) {
+                        return this.itemsGameCDN[path];
+                    }
+                }
             }
         }
     }
@@ -619,18 +722,30 @@ class CSGOCdn extends EventEmitter {
         if (!match) return;
 
         const kitName = match[1];
-        const tag = `#${this.csgoEnglish[kitName]}`;
 
-        const musicDefs = this.itemsGame.music_definitions;
+        for (const t of this.csgoEnglish['inverted'][kitName] || []) {
+            const tag = `#${t}`;
 
-        const kit = Object.keys(musicDefs).find((n) => {
-            const k = musicDefs[n];
+            const musicDefs = this.itemsGame.music_definitions;
 
-            return k.loc_name === tag;
-        });
+            const kitIndex = Object.keys(musicDefs).find((n) => {
+                const k = musicDefs[n];
 
-        const path = `resource/flash/${musicDefs[kit].image_inventory}.png`;
-        return this.getPathURL(path);
+                return k.loc_name === tag;
+            });
+
+            const kit = musicDefs[kitIndex];
+
+            if (!kit || !kit.image_inventory) continue;
+
+            const path = `resource/flash/${kit.image_inventory}.png`;
+
+            const url = this.getPathURL(path);
+
+            if (url) {
+                return url;
+            }
+        }
     }
 
     /**
@@ -645,45 +760,66 @@ class CSGOCdn extends EventEmitter {
      */
     getItemNameURL(marketHashName, phase) {
         marketHashName = marketHashName.trim();
+        let strippedMarketHashName = marketHashName;
 
+        // Weapons and Music Kits can have extra tags we need to ignore
         const extraTags = ['★ ', 'StatTrak™ ', 'Souvenir '];
 
         for (const tag of extraTags) {
-            if (marketHashName.startsWith(tag)) {
-                marketHashName = marketHashName.replace(tag, '');
+            if (strippedMarketHashName.startsWith(tag)) {
+                strippedMarketHashName = strippedMarketHashName.replace(tag, '');
             }
         }
 
-        if (this.isWeapon(marketHashName)) {
-            return this.getWeaponNameURL(marketHashName, phase);
+        if (this.isWeapon(strippedMarketHashName)) {
+            return this.getWeaponNameURL(strippedMarketHashName, phase);
+        }
+        else if (strippedMarketHashName.startsWith('Music Kit |')) {
+            return this.getMusicKitNameURL(strippedMarketHashName);
         }
         else if (marketHashName.startsWith('Sticker |')) {
             return this.getStickerNameURL(marketHashName);
-        }
-        else if (marketHashName.startsWith('Music Kit |')) {
-            return this.getMusicKitNameURL(marketHashName);
         }
         else if (marketHashName.startsWith('Sealed Graffiti |')) {
             return this.getGraffitiNameURL(marketHashName);
         }
         else {
             // Other in items
-            const tag = `#${this.csgoEnglish[marketHashName]}`;
-            const items = this.itemsGame.items;
+            for (const t of this.csgoEnglish['inverted'][marketHashName] || []) {
+                const tag = `#${t.toLowerCase()}`;
+                const items = this.itemsGame.items;
+                const prefabs = this.itemsGame.prefabs;
 
-            const item = Object.keys(items).find((n) => {
-                const i = items[n];
+                let item = Object.keys(items).find((n) => {
+                    const i = items[n];
 
-                return i.item_name === tag;
-            });
+                    return i.item_name && i.item_name.toLowerCase() === tag;
+                });
 
-            if (!items[item].image_inventory) {
-                this.log.error('Failed to obtain item VPK path, is it a supported item?');
-                return;
+                let path;
+
+                if (!items[item] || !items[item].image_inventory) {
+                    // search the prefabs (ex. CS:GO Case Key)
+                    item = Object.keys(prefabs).find((n) => {
+                        const i = prefabs[n];
+
+                        return i.item_name && i.item_name.toLowerCase() === tag;
+                    });
+
+                    if (!prefabs[item] || !prefabs[item].image_inventory) continue;
+
+                    path = `resource/flash/${prefabs[item].image_inventory}.png`;
+                }
+                else {
+                    path = `resource/flash/${items[item].image_inventory}.png`;
+                }
+
+                const url = this.getPathURL(path);
+
+                if (url) {
+                    return url;
+                }
             }
-
-            const path = `resource/flash/${items[item].image_inventory}.png`;
-            return this.getPathURL(path);
         }
     }
 }

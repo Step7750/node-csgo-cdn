@@ -18,6 +18,8 @@ const defaultConfig = {
     logLevel: 'info'
 };
 
+const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
+
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
     graffiti: 'resource/flash/econ/stickers/default',
@@ -615,21 +617,19 @@ class CSGOCdn extends EventEmitter {
      * @return {string|void} Weapon image URL
      */
     getWeaponNameURL(marketHashName, phase) {
-        let match;
+        const hasWear = wears.findIndex((n) => marketHashName.includes(n)) > -1;
 
-        // Account for vanilla items
-        if (marketHashName.includes('|')) {
-            const reg = /(.*) \| (.*) \(.*\)/;
-            match = marketHashName.match(reg);
-        }
-        else {
-            match = [marketHashName, marketHashName];
+        if (hasWear) {
+            // remove it
+            marketHashName = marketHashName.replace(/\([^)]*\)$/, '');
         }
 
-        if (!match) return;
+        const match = marketHashName.split('|').map((m) => m.trim());
 
-        const weaponName = match[1];
-        const skinName = match[2];
+        const weaponName = match[0];
+        const skinName = match[1];
+
+        if (!weaponName) return;
 
         const weaponTags = this.csgoEnglish['inverted'][weaponName] || [];
         const prefabs = this.itemsGame.prefabs;

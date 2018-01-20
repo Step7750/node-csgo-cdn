@@ -18,8 +18,6 @@ const defaultConfig = {
     logLevel: 'info'
 };
 
-const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
-
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
     graffiti: 'resource/flash/econ/stickers/default',
@@ -490,8 +488,48 @@ class CSGOCdn extends EventEmitter {
      * @return {boolean} Whether a weapon
      */
     isWeapon(marketHashName) {
-        for (const wear of wears) {
-            if (marketHashName.includes(wear)) return true;
+        const prefabs = this.itemsGame.prefabs;
+        const items = this.itemsGame.items;
+        const weaponName = marketHashName.split('|')[0].trim();
+
+        const weaponTags = this.csgoEnglish['inverted'][weaponName];
+
+        if (!weaponTags) return false;
+
+        // For every matching weapon tag...
+        for (const t of weaponTags) {
+            const weaponTag = `#${t}`;
+
+            const prefab = Object.keys(prefabs).find((n) => {
+                const fab = prefabs[n];
+
+                return fab.item_name === weaponTag;
+            });
+
+            let fab;
+
+            if (!prefab) {
+                // special knives aren't in the prefab (karambits, etc...)
+                const item = Object.keys(items).find((n) => {
+                    const i = items[n];
+
+                    return i.item_name === weaponTag;
+                });
+
+                fab = items[item];
+            }
+            else {
+                fab = prefabs[prefab];
+            }
+
+            if (fab && fab.used_by_classes) {
+                const used = fab.used_by_classes;
+
+                // Ensure that the item is used by one of the sides
+                if (used['terrorists'] || used['counter-terrorists']) {
+                    return true;
+                }
+            }
         }
 
         return false;

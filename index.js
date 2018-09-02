@@ -462,7 +462,7 @@ class CSGOCdn extends EventEmitter {
         let skinName = '';
 
         if (paintindex in paintKits) {
-            skinName = paintKits[iteminfo.paintindex].name;
+            skinName = paintKits[paintindex].name;
 
             if (skinName === 'default') {
                 skinName = '';
@@ -475,7 +475,7 @@ class CSGOCdn extends EventEmitter {
         const items = this.itemsGame.items;
 
         if (defindex in items) {
-            weaponName = items[iteminfo.defindex].name;
+            weaponName = items[defindex].name;
         }
 
         // Get the image url

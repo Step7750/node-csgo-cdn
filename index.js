@@ -485,7 +485,8 @@ class CSGOCdn extends EventEmitter {
     }
 
     /**
-     * Returns whether the given name is a weapon by checking for condition
+     * Returns whether the given name is a weapon by checking
+     * the prefab and whether it is used by one of the sides
      * @param marketHashName Item name
      * @return {boolean} Whether a weapon
      */

@@ -593,20 +593,35 @@ class CSGOCdn extends EventEmitter {
 
             const stickerKits = this.itemsGame.sticker_kits;
 
-            const kitIndex = Object.keys(stickerKits).find((n) => {
+            const kitIndices = Object.keys(stickerKits).filter((n) => {
                 const k = stickerKits[n];
 
                 return k.item_name === stickerTag;
             });
 
-            const kit = stickerKits[kitIndex];
+            // prefer kit indices with "graffiti" in the name
+            kitIndices.sort((a, b) => {
+                const index1 = !!stickerKits[a].name && stickerKits[a].name.indexOf('graffiti');
+                const index2 = !!stickerKits[b].name && stickerKits[b].name.indexOf('graffiti');
+                if (index1 === index2) {
+                    return 0
+                } else if (index1 > -1) {
+                    return -1
+                } else {
+                    return 1
+                }
+            });
 
-            if (!kit || !kit.sticker_material) continue;
+            for (const kitIndex of kitIndices) {
+                const kit = stickerKits[kitIndex];
 
-            const url = this.getStickerURL(kit.sticker_material, true);
+                if (!kit || !kit.sticker_material) continue;
 
-            if (url) {
-                return url;
+                const url = this.getStickerURL(kit.sticker_material, true);
+
+                if (url) {
+                    return url;
+                }
             }
         }
     }

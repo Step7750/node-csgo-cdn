@@ -40,10 +40,10 @@ and prevents you from having to scrape it or host it yourself.
 
 ## How?
 
-Most of the graphical resources for CSGO are stored in [VDF](https://developer.valvesoftware.com/wiki/VPK_File_Format)
+Most of the graphical resources for CSGO are stored in [VPK](https://developer.valvesoftware.com/wiki/VPK_File_Format)
 files which include the sticker, music kit, tools, and status icon images.
 
-The root of a VDF contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
+The root of a VPK contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
 the install directory of CS:GO, you'll see `pak01_003.vpk`, `pak01_004.vpk`, etc... where these files are located.
 
 Thankfully, Valve was kind enough (as of writing this) to include all of the relevant images in a few packages
@@ -53,7 +53,7 @@ This library, using node-steam-user, checks the manifest for any updates to the 
 downloads only the required VPK packages that contain all relevant images if they have changed from the
 content servers.
 
-When trying to retrieve a CDN image URL for a given item, the library takes the SHA1 hash of the file and the VDF
+When trying to retrieve a CDN image URL for a given item, the library takes the SHA1 hash of the file and the VPK
 path that links to it to generate the corresponding URL.
 
 Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologne2015/mousesports.3e75da497d9f75fa56f463c22db25f29992561ce.png

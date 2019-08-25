@@ -39,7 +39,7 @@ class CSGOCdn extends EventEmitter {
     }
 
     get steamReady() {
-        return this.user.client.connected;
+        return this.user.steamID;
     }
 
     get phase() {
@@ -152,7 +152,7 @@ class CSGOCdn extends EventEmitter {
     getLatestManifestId() {
         this.log.debug('Obtaining latest manifest ID');
         return this.getProductInfo().then(([apps, packages, unknownApps, unknownPackages]) => {
-            const csgo = apps['730'].appinfo;
+            const csgo = packages['730'].appinfo;
             const commonDepot = csgo.depots['731'];
 
             return commonDepot.manifests.public;
@@ -286,7 +286,7 @@ class CSGOCdn extends EventEmitter {
                 continue;
             }
 
-            const promise = this.user.downloadFileAsync(730, 731, file, `${this.config.directory}/${name}`);
+            const promise = this.user.downloadFile(730, 731, file, `${this.config.directory}/${name}`);
             promises.push(promise);
         }
 
@@ -365,17 +365,13 @@ class CSGOCdn extends EventEmitter {
 
             this.log.info(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
 
-            const promise = new Promise((resolve, reject) => {
-                const ee = this.user.downloadFile(730, 731, file, filePath, () => {
-                    resolve();
-                });
-
-                ee.on('progress', (bytesDownloaded, totalSize) => {
-                    this.log.info(`${status} ${(bytesDownloaded*100/totalSize).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSize)} MB`);
-                });
+            await this.user.downloadFile(730, 731, file, filePath, (none, data) => {
+                const { type, bytesDownloaded, totalSizeBytes } = data;
+                
+                if (type == 'progress') {
+                    this.log.info(`${status} ${(bytesDownloaded*100/totalSizeBytes).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSizeBytes)} MB`);
+                }
             });
-
-            await promise;
 
             this.log.info(`${status} Downloaded ${fileName}`);
         }

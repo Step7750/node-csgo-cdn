@@ -39,7 +39,7 @@ class CSGOCdn extends EventEmitter {
     }
 
     get steamReady() {
-        return this.user.steamID;
+        return !!this.user.steamID;
     }
 
     get phase() {

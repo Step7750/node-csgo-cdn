@@ -365,10 +365,8 @@ class CSGOCdn extends EventEmitter {
 
             this.log.info(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
 
-            await this.user.downloadFile(730, 731, file, filePath, (none, data) => {
-                const { type, bytesDownloaded, totalSizeBytes } = data;
-                
-                if (type == 'progress') {
+            await this.user.downloadFile(730, 731, file, filePath, (none, { type, bytesDownloaded, totalSizeBytes }) => {
+                if (type === 'progress') {
                     this.log.info(`${status} ${(bytesDownloaded*100/totalSizeBytes).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSizeBytes)} MB`);
                 }
             });

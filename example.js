@@ -48,8 +48,7 @@ SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {
         accountName: cred.username,
         password: cred.password,
         rememberPassword: true,
-        twoFactorCode: code,
-        logonID: 2121,
+        twoFactorCode: code
     };
 
     console.log('Logging into Steam....');

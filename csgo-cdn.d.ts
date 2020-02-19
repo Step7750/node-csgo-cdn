@@ -9,6 +9,17 @@ declare module "csgo-cdn" {
     Debug = 'debug',
     Silly = 'silly'
   }
+  
+  export enum CsgoCdnSkinPhases {
+    Ruby = 'am_ruby_marbleized',
+    Sapphire = 'am_sapphire_marbleized',
+    Blackpearl = 'am_blackpearl_marbleized',
+    Emerald = 'am_emerald_marbleized',
+    Phase1 = 'phase1',
+    Phase2 = 'phase2',
+    Phase3 = 'phase3',
+    Phase4 = 'phase4'
+  }
 
   export interface CsgoCdnOptions {
     directory: string, // relative data directory for VPK files
@@ -27,11 +38,11 @@ declare module "csgo-cdn" {
     public csgoEnglish: any[];
     public itemsGameCDN: any[];
 
-    constructor(steamUser: any, options: CsgoCdnOptions);
+    constructor(steamUser: any, options?: Partial<CsgoCdnOptions>);
 
-    getItemNameURL(marketHashName: string, phase: any): string;
-    getStickerURL(stickerName: string, large?: boolean): string;
-    getWeaponURL(defindex: number, paintindex: number): string;
+    getItemNameURL(marketHashName: string, phase?: CsgoCdnSkinPhases): string | undefined | null;
+    getStickerURL(stickerName: string, large?: boolean): string | undefined | null;
+    getWeaponURL(defindex: number, paintindex: number): string | undefined | null;
 
     on( event: 'ready', listener: () => void ): this;
   }

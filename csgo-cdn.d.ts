@@ -1,6 +1,20 @@
 declare module "csgo-cdn" {
   import {EventEmitter} from 'events';
 
+  type StringToStringObject = {
+    [key:string]: string
+  }
+
+  type DeepStringToStringObject = {
+    [key:string]: string | DeepStringToStringObject
+  }
+
+  type ItemsEnglishObject = StringToStringObject & {
+    "inverted": {
+      [key:string]: Array<string>
+    }
+  }
+  
   export enum CsgoCdnLogLevel {
     Error = 'error',
     Warn = 'warn',
@@ -34,9 +48,9 @@ declare module "csgo-cdn" {
   }
 
   export default class CsgoCdn extends EventEmitter {
-    public itemsGame: any[];
-    public csgoEnglish: any[];
-    public itemsGameCDN: any[];
+    public itemsGame: DeepStringToStringObject;
+    public csgoEnglish: ItemsEnglishObject;
+    public itemsGameCDN: StringToStringObject;
 
     constructor(steamUser: any, options?: Partial<CsgoCdnOptions>);
 

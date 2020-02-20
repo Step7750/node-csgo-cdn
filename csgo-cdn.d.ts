@@ -41,6 +41,7 @@ declare module "csgo-cdn" {
     logLevel: CsgoCdnLogLevel, // logging level, (error, warn, info, verbose, debug, silly)
     stickers: boolean, // whether to obtain the vpk for stickers
     graffiti: boolean, // whether to obtain the vpk for graffiti
+    characters: boolean, // whether to obtain the vpk for characters
     musicKits: boolean, // whether to obtain the vpk for music kits
     cases: boolean, // whether to obtain the vpk for cases
     tools: boolean, // whether to obtain the vpk for tools

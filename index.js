@@ -11,6 +11,7 @@ const defaultConfig = {
     updateInterval: 30000,
     stickers: true,
     graffiti: true,
+    characters: true,
     musicKits: true,
     cases: true,
     tools: true,
@@ -23,6 +24,7 @@ const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Batt
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
     graffiti: 'resource/flash/econ/stickers/default',
+    characters: 'resource/flash/econ/characters',
     musicKits: 'resource/flash/econ/music_kits',
     cases: 'resource/flash/econ/weapon_cases',
     tools: 'resource/flash/econ/tools',

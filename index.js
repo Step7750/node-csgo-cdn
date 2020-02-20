@@ -432,7 +432,9 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const fileName = large ? `${name}_large.png` : `${name}.png`;
+        const foundName = name.split('/').pop().toLowerCase();
+
+        const fileName = large ? `${foundName}_large.png` : `${foundName}.png`;
         const path = this.vpkFiles.find((t) => t.endsWith(fileName));
 
         if (path) return this.getPathURL(path).replace('\r', '');

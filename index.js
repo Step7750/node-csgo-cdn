@@ -184,7 +184,7 @@ class CSGOCdn extends EventEmitter {
         const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
         const manifestFiles = manifest.files;
 
-        const dirFile = manifest.files.find((file) => file.filename.endsWith("pak01_dir.vpk"));
+        const dirFile = manifest.files.find((file) => file.filename.endsWith("csgo\\pak01_dir.vpk"));
         const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
         const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
         const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));

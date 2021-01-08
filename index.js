@@ -141,7 +141,7 @@ class CSGOCdn extends EventEmitter {
     getProductInfo() {
         this.log.debug('Obtaining CS:GO product info');
         return new Promise((resolve, reject) => {
-            this.user.getProductInfo([730], [], (apps, packages, unknownApps, unknownPackages) => {
+            this.user.getProductInfo([730], [], true, (apps, packages, unknownApps, unknownPackages) => {
                 resolve([apps, packages, unknownApps, unknownPackages]);
             });
         });
@@ -299,7 +299,7 @@ class CSGOCdn extends EventEmitter {
      * Loads the CSGO dir VPK specified in the config
      */
     loadVPK() {
-        this.vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
+        this.vpkDir = new vpk(this.config.directory + '/platform_pak01_dir.vpk');
         this.vpkDir.load();
 
         this.vpkFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));

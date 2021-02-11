@@ -302,7 +302,7 @@ class CSGOCdn extends EventEmitter {
         this.vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
         this.vpkDir.load();
 
-        this.vpkFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+        this.vpkFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers') || f.startsWith('resource/flash/econ/patches'));
     }
 
     /**

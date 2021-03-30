@@ -89,6 +89,7 @@ cdn.on('ready', () => {
         updateInterval: 30000, // seconds between update checks, -1 to disable auto-updates
         logLevel: 'info', // logging level, (error, warn, info, verbose, debug, silly)
         stickers: true, // whether to obtain the vpk for stickers
+        patches: true, // whether to obtain the vpk for patches
         graffiti: true, // whether to obtain the vpk for graffiti
         musicKits: true, // whether to obtain the vpk for music kits
         cases: true, // whether to obtain the vpk for cases
@@ -111,6 +112,11 @@ Returns the 'large' version of the image.
 ### getStickerURL(stickerName, large=true)
 
 * `stickerName` - Name of the sticker path from `items_game.txt` (ex. cluj2015/sig_olofmeister_gold)
+* `large` - Whether to obtain the large version of the image
+
+### getPatchURL(patchName, large=true)
+
+* `stickerName` - Name of the patch path from `items_game.txt` (ex. case01/patch_phoenix)
 * `large` - Whether to obtain the large version of the image
 
 

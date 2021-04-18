@@ -10,6 +10,7 @@ const defaultConfig = {
     directory: 'data',
     updateInterval: 30000,
     stickers: true,
+    patches: true,
     graffiti: true,
     characters: true,
     musicKits: true,
@@ -23,6 +24,7 @@ const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Batt
 
 const neededDirectories = {
     stickers: 'resource/flash/econ/stickers',
+    patches: 'resource/flash/econ/patches',
     graffiti: 'resource/flash/econ/stickers/default',
     characters: 'resource/flash/econ/characters',
     musicKits: 'resource/flash/econ/music_kits',
@@ -302,7 +304,8 @@ class CSGOCdn extends EventEmitter {
         this.vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
         this.vpkDir.load();
 
-        this.vpkFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+        this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
+        this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/patches'));
     }
 
     /**
@@ -435,7 +438,30 @@ class CSGOCdn extends EventEmitter {
         }
 
         const fileName = large ? `${name}_large.png` : `${name}.png`;
-        const path = this.vpkFiles.find((t) => t.endsWith(fileName));
+        const path = this.vpkStickerFiles.find((t) => t.endsWith(fileName));
+
+        if (path) return this.getPathURL(path);
+    }
+
+    /**
+     * Returns the item Steam CDN URL for the specified name
+     *
+     * Example Patch Names: case01/patch_phoenix, case01/patch_dangerzone, case01/patch_easypeasy, case_skillgroups/patch_goldnova1
+     *
+     * You can find the patch names from their relevant "patch_material" fields in items_game.txt
+     *      items_game.txt can be found in the core game files of CS:GO or as itemsGame here
+     *
+     * @param name The item name (the patch_material field in items_game.txt, or the cdn file format)
+     * @param large Whether to obtain the "large" CDN version of the item
+     * @return {string|void} If successful, the HTTPS CDN URL for the item
+     */
+     getPatchURL(name, large=true) {
+        if (!this.ready) {
+            return;
+        }
+
+        const fileName = large ? `${name}_large.png` : `${name}.png`;
+        const path = this.vpkPatchFiles.find((t) => t.endsWith(fileName));
 
         if (path) return this.getPathURL(path);
     }
@@ -567,6 +593,40 @@ class CSGOCdn extends EventEmitter {
             if (url) {
                 return url;
             }
+        }
+    }
+    
+    /**
+     * Returns the patch URL given the market hash name
+     * @param marketHashName Patch name
+     * @return {string|void} Patch image URL
+     */
+    getPatchNameURL(marketHashName) {
+        const reg = /Patch \| (.*)/;
+        const match = marketHashName.match(reg);
+
+        if (!match) return;
+
+        const stickerName = match[1];
+
+        for (const tag of this.csgoEnglish['inverted'][stickerName] || []) {
+            const stickerTag = `#${tag}`;
+
+            const stickerKits = this.itemsGame.sticker_kits; // Patches are in the sticker_kits as well
+
+            const kitIndex = Object.keys(stickerKits).find((n) => {
+                const k = stickerKits[n];
+
+                return k.item_name === stickerTag;
+            });
+
+            const kit  = stickerKits[kitIndex];
+
+            if (!kit || !kit.patch_material) continue;
+
+            const url = this.getPatchURL(stickerKits[kitIndex].patch_material, true);
+
+            if (url) return url;
         }
     }
 
@@ -794,6 +854,9 @@ class CSGOCdn extends EventEmitter {
         }
         else if (marketHashName.startsWith('Sealed Graffiti |')) {
             return this.getGraffitiNameURL(marketHashName);
+        }
+        else if (marketHashName.startsWith('Patch |')) {
+            return this.getPatchNameURL(marketHashName);
         }
         else {
             // Other in items

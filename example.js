@@ -14,6 +14,14 @@ const cdn = new csgoCDN(user, {musicKits: true, cases: true, tools: true, status
 cdn.on('ready', () => {
     console.log(cdn.getStickerURL('cologne2016/astr_gold', false));
     console.log(cdn.getStickerURL('cologne2016/astr_gold', true));
+    console.log(cdn.getPatchURL('case01/patch_phoenix', false));
+    console.log(cdn.getPatchURL('case01/patch_phoenix', true));
+    console.log(cdn.getPatchURL('case01/patch_hydra', true));
+    console.log(cdn.getPatchURL('case_skillgroups/patch_supreme', true));
+    console.log(cdn.getPatchNameURL('Patch | Phoenix'));
+    console.log(cdn.getPatchNameURL('Patch | Hydra'));
+    console.log(cdn.getItemNameURL('Patch | Phoenix'));
+    console.log(cdn.getItemNameURL('Patch | Sustenance!'));
     console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
     console.log(cdn.getItemNameURL('AWP | Redline (Field-Tested)'));
     console.log(cdn.getItemNameURL('MP7 | Army Recon (Minimal Wear)'));

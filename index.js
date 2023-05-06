@@ -306,6 +306,7 @@ class CSGOCdn extends EventEmitter {
 
         this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
         this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/patches'));
+        this.vpkStatusIconFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/status_icons'));
     }
 
     /**
@@ -397,6 +398,20 @@ class CSGOCdn extends EventEmitter {
         }
     }
 
+
+    /**
+     * Returns all items found in the items_game.txt file
+     * @return {array} All CS:GO Items
+     */
+    getItems() {
+        if(!this.ready) {
+            return [];
+        }
+
+        return this.itemsGame?.items;
+    }
+
+
     /**
      * Given a VPK path, returns the CDN URL
      * @param path VPK path
@@ -462,6 +477,29 @@ class CSGOCdn extends EventEmitter {
 
         const fileName = large ? `${name}_large.png` : `${name}.png`;
         const path = this.vpkPatchFiles.find((t) => t.endsWith(fileName));
+
+        if (path) return this.getPathURL(path);
+    }
+
+    /**
+     * Returns the item Steam CDN URL for the specified name
+     *
+     * Example Patch Names: blast_pickem_2023_crystal, 5yearcoin, service_medal_2016_lvl2
+     *
+     * You can find the status icon names from their relevant "image_inventory" fields in items_game.txt
+     *      items_game.txt can be found in the core game files of CS:GO or as itemsGame here
+     *
+     * @param name The item name (the image_inventory field in items_game.txt)
+     * @param large Whether to obtain the "large" CDN version of the item
+     * @return {string|void} If successful, the HTTPS CDN URL for the item
+     */
+     getStatusIconURL(name, large=true) {
+        if (!this.ready) {
+            return;
+        }
+
+        const fileName = large ? `${name}_large.png` : `${name}.png`;
+        const path = this.vpkStatusIconFiles.find((t) => t.endsWith(fileName));
 
         if (path) return this.getPathURL(path);
     }

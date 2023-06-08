@@ -183,7 +183,7 @@ class CSGOCdn extends EventEmitter {
 
         this.log.debug(`Obtained latest manifest ID: ${manifestId}`);
 
-        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId);
+        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId.gid, 'public');
         const manifestFiles = manifest.files;
 
         const dirFile = manifest.files.find((file) => file.filename.endsWith("csgo\\pak01_dir.vpk"));

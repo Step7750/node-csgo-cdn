@@ -181,7 +181,7 @@ class CSGOCdn extends EventEmitter {
 
         const manifestId = await this.getLatestManifestId();
 
-        this.log.debug(`Obtained latest manifest ID: ${manifestId}`);
+        this.log.debug(`Obtained latest manifest ID: ${manifestId.gid}`);
 
         const [manifest] = await this.user.getManifestAsync(730, 731, manifestId.gid, 'public');
         const manifestFiles = manifest.files;

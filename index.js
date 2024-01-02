@@ -1,10 +1,13 @@
-const Promise = require('bluebird');
-const EventEmitter = require('events');
-const fs = Promise.promisifyAll(require('fs'));
-const vpk = require('vpk');
-const vdf = require('simple-vdf');
-const hasha = require('hasha');
-const winston = require('winston');
+import EventEmitter from 'events';
+import fs from 'fs';
+import vpk from 'vpk';
+import vdf from 'simple-vdf';
+import { hash, hashFile } from 'hasha';
+import winston from 'winston';
+import { exec } from 'child_process';
+import { HttpClient } from '@doctormckay/stdlib/http.js'
+import AdmZip from 'adm-zip';
+import os from 'node:os';
 
 const defaultConfig = {
     directory: 'data',
@@ -17,20 +20,30 @@ const defaultConfig = {
     cases: true,
     tools: true,
     statusIcons: true,
-    logLevel: 'info'
+    logLevel: 'info',
+    vrfBinary: 'Decompiler'
 };
+
+const APP_ID = 730;
+const DEPOT_ID = 2347770;
 
 const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
 
 const neededDirectories = {
-    stickers: 'resource/flash/econ/stickers',
-    patches: 'resource/flash/econ/patches',
-    graffiti: 'resource/flash/econ/stickers/default',
-    characters: 'resource/flash/econ/characters',
-    musicKits: 'resource/flash/econ/music_kits',
-    cases: 'resource/flash/econ/weapon_cases',
-    tools: 'resource/flash/econ/tools',
-    statusIcons: 'resource/flash/econ/status_icons',
+    stickers: 'panorama/images/econ/stickers',
+    patches: 'panorama/images/econ/patches',
+    graffiti: 'panorama/images/econ/stickers/default',
+    characters: 'panorama/images/econ/characters',
+    musicKits: 'panorama/images/econ/music_kits',
+    cases: 'panorama/images/econ/weapon_cases',
+    tools: 'panorama/images/econ/tools',
+    statusIcons: 'panorama/images/econ/status_icons',
+};
+
+const neededFiles = {
+    itemsGame: 'scripts/items/items_game.txt',
+    itemsGameCdn: 'scripts/items/items_game_cdn.txt',
+    csgoEnglish: 'resource/csgo_english.txt'
 };
 
 function bytesToMB(bytes) {
@@ -76,7 +89,11 @@ class CSGOCdn extends EventEmitter {
 
         this.createDataDirectory();
 
-        this.user = Promise.promisifyAll(steamUser, {multiArgs: true});
+        this.user = steamUser;
+
+        this.client = new HttpClient({
+            defaultHeaders: {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'},
+        });
 
         this.log = winston.createLogger({
             level: config.logLevel,
@@ -119,8 +136,12 @@ class CSGOCdn extends EventEmitter {
      */
     updateLoop() {
         if (this.config.updateInterval > 0) {
-            return this.update().then(() => Promise.delay(this.config.updateInterval*1000))
-                .then(() => this.updateLoop());
+            this.log.info(`Auto-updates enabled, checking for updates every ${this.config.updateInterval} seconds`);
+            this.update().then(() => {
+                setTimeout(() => {
+                    this.updateLoop();
+                }, this.config.updateInterval*1000);
+            })
         }
         else {
             this.log.info('Auto-updates disabled, checking if required files exist');
@@ -143,21 +164,21 @@ class CSGOCdn extends EventEmitter {
     getProductInfo() {
         this.log.debug('Obtaining CS:GO product info');
         return new Promise((resolve, reject) => {
-            this.user.getProductInfo([730], [], true, (apps, packages, unknownApps, unknownPackages) => {
+            this.user.getProductInfo([APP_ID], [], true, (apps, packages, unknownApps, unknownPackages) => {
                 resolve([apps, packages, unknownApps, unknownPackages]);
             });
         });
     }
 
     /**
-     * Returns the latest CSGO manifest ID for the public 731 depot
-     * @return {*|PromiseLike<*[]>|Promise<*[]>} 731 Depot Manifest ID
+     * Returns the latest CSGO manifest ID for the public DEPOT_ID depot
+     * @return {*|PromiseLike<*[]>|Promise<*[]>} DEPOT_ID Depot Manifest ID
      */
     getLatestManifestId() {
         this.log.debug('Obtaining latest manifest ID');
         return this.getProductInfo().then(([apps, packages, unknownApps, unknownPackages]) => {
-            const csgo = packages['730'].appinfo;
-            const commonDepot = csgo.depots['731'];
+            const csgo = packages[APP_ID].appinfo;
+            const commonDepot = csgo.depots[DEPOT_ID];
 
             return commonDepot.manifests.public;
         });
@@ -183,32 +204,120 @@ class CSGOCdn extends EventEmitter {
 
         this.log.debug(`Obtained latest manifest ID: ${manifestId.gid}`);
 
-        const [manifest] = await this.user.getManifestAsync(730, 731, manifestId.gid, 'public');
-        const manifestFiles = manifest.files;
+        this.user.getManifest(APP_ID, DEPOT_ID, manifestId.gid, 'public', '' ).then(async ({manifest}) => {
+            const manifestFiles = manifest.files;
 
-        const dirFile = manifest.files.find((file) => file.filename.endsWith("csgo\\pak01_dir.vpk"));
-        const itemsGameFile = manifest.files.find((file) => file.filename.endsWith("items_game.txt"));
-        const itemsGameCDNFile = manifest.files.find((file) => file.filename.endsWith("items_game_cdn.txt"));
-        const csgoEnglishFile = manifest.files.find((file) => file.filename.endsWith("csgo_english.txt"));
+            const dirFile = manifest.files.find((file) => file.filename.endsWith("csgo\\pak01_dir.vpk"));
 
-        this.log.debug(`Downloading required static files`);
+            this.log.debug(`Downloading required static files`);
 
-        await this.downloadFiles([dirFile, itemsGameFile, itemsGameCDNFile, csgoEnglishFile]);
+            await this.downloadFiles([dirFile]);
 
-        this.log.debug('Loading static file resources');
+            this.log.debug('Loading static file resources');
 
-        this.loadResources();
-        this.loadVPK();
+            this.loadVPK();
 
-        await this.downloadVPKFiles(this.vpkDir, manifestFiles);
+            await this.downloadVPKFiles(this.vpkDir, manifestFiles);
 
-        this.ready = true;
+            this.loadResources();
+
+            const pathsToDump = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]).concat(Object.keys(neededFiles).map((f) => neededFiles[f]));
+
+            // Check if the VRF binary exists
+            if (!fs.existsSync(`${this.config.directory}/${this.config.vrfBinary}`)) {
+                this.log.error(`VRF binary not found at ${this.config.vrfBinary}, downloading...`);
+                await this.downloadVRF();
+            }
+
+            await Promise.all(
+                pathsToDump.map((path) => new Promise((resolve, reject) => {
+                    this.log.debug(`Dumping ${path}...`);
+
+                    exec(`${this.config.directory}/${this.config.vrfBinary} --input data/pak01_dir.vpk --vpk_filepath ${path} -o data -d`, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error(`exec error: ${error}`);
+                        }
+
+                        resolve();
+                    });
+                })
+            ));
+
+            this.log.info('Finished updating CS:GO files');
+            this.ready = true;
+        });
+    }
+
+    async downloadVRF () {
+        const platform = os.platform();
+        const architecture = os.arch();
+
+        let osName = '';
+        let archName = '';
+
+        switch (platform) {
+            case 'win32':
+                osName = 'windows';
+                break;
+            case 'darwin':
+                osName = 'macos';
+                break;
+            case 'linux':
+                osName = 'linux';
+                break;
+            default:
+                osName = 'unknown';
+        }
+
+        switch (architecture) {
+            case 'x64':
+                archName = 'x64';
+                break;
+            case 'arm64':
+                archName = 'arm64';
+                break;
+            case 'arm':
+                archName = 'arm';
+                break;
+            default:
+                archName = 'unknown';
+        }
+
+        let latestTag = await this.client.request({
+            method: 'GET',
+            url: 'https://api.github.com/repos/ValveResourceFormat/ValveResourceFormat/releases/latest'
+        });
+
+        if(latestTag.statusCode !== 200) {
+            throw new Error(`Failed to get latest release ${latestTag.statusCode}`);
+        }
+
+        let binary = await this.client.request({
+            method: 'GET',
+            followRedirects: true,
+            url: `https://github.com/ValveResourceFormat/ValveResourceFormat/releases/download/${latestTag.jsonBody.tag_name}/Decompiler-${osName}-${archName}.zip`
+        });
+
+        if(binary.statusCode !== 200 && binary.statusCode !== 302) {
+            throw new Error(`Failed to get latest release ${binary.statusCode}`);
+        }
+
+        fs.writeFileSync('./data/Decompiler.zip', binary.rawBody);
+
+        const zip = new AdmZip('./data/Decompiler.zip');
+        zip.extractAllTo('./data', true);
+
+        fs.unlinkSync('./data/Decompiler.zip');
+
+        if (platform !== 'win32') {
+            fs.chmodSync('./data/Decompiler', '755');
+        }
     }
 
     loadResources() {
-        this.itemsGame = vdf.parse(fs.readFileSync(`${this.config.directory}/items_game.txt`, 'utf8'))['items_game'];
-        this.csgoEnglish = vdf.parse(fs.readFileSync(`${this.config.directory}/csgo_english.txt`, 'ucs2'))['lang']['Tokens'];
-        this.itemsGameCDN = this.parseItemsCDN(fs.readFileSync(`${this.config.directory}/items_game_cdn.txt`, 'utf8'));
+        this.itemsGame = vdf.parse(this.vpkDir.getFile('scripts/items/items_game.txt').toString())['items_game'];
+        this.itemsGameCDN = this.parseItemsCDN(this.vpkDir.getFile('scripts/items/items_game_cdn.txt').toString());
+        this.csgoEnglish = vdf.parse(this.vpkDir.getFile('resource/csgo_english.txt').toString())['lang']['Tokens'];
 
         this.weaponNameMap = Object.keys(this.csgoEnglish).filter(n => n.startsWith("SFUI_WPNHUD"));
         this.csgoEnglishKeys = Object.keys(this.csgoEnglish);
@@ -278,21 +387,23 @@ class CSGOCdn extends EventEmitter {
     async downloadFiles(files) {
         const promises = [];
 
-        for (const file of files) {
-            let name = file.filename.split('\\');
-            name = name[name.length-1];
+        await Promise.all(
+            files.map(async(file) => {
+                let name = file.filename.split('\\');
+                name = name[name.length-1];
 
-            const path = `${this.config.directory}/${name}`;
+                const path = `${this.config.directory}/${name}`;
 
-            const isDownloaded = await this.isFileDownloaded(path, file.sha_content);
+                const isDownloaded = await this.isFileDownloaded(path, file.sha_content);
 
-            if (isDownloaded) {
-                continue;
-            }
+                if (isDownloaded) {
+                    return;
+                }
 
-            const promise = this.user.downloadFile(730, 731, file, `${this.config.directory}/${name}`);
-            promises.push(promise);
-        }
+                const promise = this.user.downloadFile(APP_ID, DEPOT_ID, file, `${this.config.directory}/${name}`);
+                promises.push(promise);
+            })
+        );
 
         return Promise.all(promises);
     }
@@ -301,12 +412,12 @@ class CSGOCdn extends EventEmitter {
      * Loads the CSGO dir VPK specified in the config
      */
     loadVPK() {
-        this.vpkDir = new vpk(this.config.directory + '/pak01_dir.vpk');
+        this.vpkDir = new vpk(`${this.config.directory}/pak01_dir.vpk`);
         this.vpkDir.load();
 
-        this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/stickers'));
-        this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/patches'));
-        this.vpkStatusIconFiles = this.vpkDir.files.filter((f) => f.startsWith('resource/flash/econ/status_icons'));
+        this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/stickers'));
+        this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/patches'));
+        this.vpkStatusIconFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/status_icons'));
     }
 
     /**
@@ -317,18 +428,14 @@ class CSGOCdn extends EventEmitter {
     getRequiredVPKFiles(vpkDir) {
         const requiredIndices = [];
 
-        const neededDirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
+        const dirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
+        const files = Object.keys(neededFiles).map((f) => neededFiles[f]);
 
         for (const fileName of vpkDir.files) {
-            for (const dir of neededDirs) {
-                if (fileName.startsWith(dir)) {
-                    const archiveIndex = vpkDir.tree[fileName].archiveIndex;
-
-                    if (!requiredIndices.includes(archiveIndex)) {
-                        requiredIndices.push(archiveIndex);
-                    }
-
-                    break;
+            if (dirs.some((dir) => fileName.startsWith(dir)) || files.some((file) => fileName === file))  {
+                const archiveIndex = vpkDir.tree[fileName].archiveIndex;
+                if (!requiredIndices.includes(archiveIndex)) {
+                    requiredIndices.push(archiveIndex);
                 }
             }
         }
@@ -371,7 +478,7 @@ class CSGOCdn extends EventEmitter {
 
             this.log.info(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
 
-            await this.user.downloadFile(730, 731, file, filePath, (none, { type, bytesDownloaded, totalSizeBytes }) => {
+            await this.user.downloadFile(APP_ID, DEPOT_ID, file, filePath, (none, { type, bytesDownloaded, totalSizeBytes }) => {
                 if (type === 'progress') {
                     this.log.info(`${status} ${(bytesDownloaded*100/totalSizeBytes).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSizeBytes)} MB`);
                 }
@@ -389,9 +496,9 @@ class CSGOCdn extends EventEmitter {
      */
     async isFileDownloaded(path, sha1) {
         try {
-            const hash = await hasha.fromFile(path, {algorithm: 'sha1'});
+            const fileSha1 = await hashFile(path, {algorithm: 'sha1'});
 
-            return hash === sha1;
+            return fileSha1 === sha1;
         }
         catch (e) {
             return false;
@@ -415,22 +522,40 @@ class CSGOCdn extends EventEmitter {
     /**
      * Given a VPK path, returns the CDN URL
      * @param path VPK path
+     * @param type Whether to load via VPK or via local file
      * @return {string|void} CDN URL
      */
-    getPathURL(path) {
-        const file = this.vpkDir.getFile(path);
+    getPathURL(path, type='vpk') {
+        let file;
+        if(type === 'vpk') {
+            this.log.debug(`Reading vpk ${path}...`);
+            file = this.vpkDir.getFile(path);
+        } else if(type === 'local') {
+            path = path.replace('.vtex_c', '.png');
+            if(!path.endsWith('.png')) {
+                path = `${path}.png`
+            }
+            this.log.debug(`Reading local file ${this.config.directory + '/' + path}...`);
+            // check if file exists
+            if (!fs.existsSync(`./${this.config.directory}/${path}`)) {
+                this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`);
+                return;
+            }
+            file = fs.readFileSync(`./${this.config.directory}/${path}`)
+        }
 
         if (!file) {
             this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`);
             return;
         }
 
-        const sha1 = hasha(file, {
+        const sha1 = hash(file, {
             'algorithm': 'sha1'
         });
 
-        path = path.replace('resource/flash', 'icons');
+        path = path.replace('panorama/images', 'icons');
         path = path.replace('.png', `.${sha1}.png`);
+        path = path.replace('_png', '');
 
         return `https://steamcdn-a.akamaihd.net/apps/730/${path}`;
     }
@@ -452,10 +577,10 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const fileName = large ? `${name}_large.png` : `${name}.png`;
-        const path = this.vpkStickerFiles.find((t) => t.endsWith(fileName));
+        const fileName = large ? `${name}_large_png` : `${name}_png`;
+        const path = this.vpkStickerFiles.find((t) => t.endsWith(`${fileName}.vtex_c`));
 
-        if (path) return this.getPathURL(path);
+        if (path) return this.getPathURL(path, 'local');
     }
 
     /**
@@ -475,10 +600,10 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const fileName = large ? `${name}_large.png` : `${name}.png`;
-        const path = this.vpkPatchFiles.find((t) => t.endsWith(fileName));
+        const fileName = large ? `${name}_large_png` : `${name}_png`;
+        const path = this.vpkPatchFiles.find((t) => t.endsWith(`${fileName}.vtex_c`));
 
-        if (path) return this.getPathURL(path);
+        if (path) return this.getPathURL(path, 'local');
     }
 
     /**
@@ -498,10 +623,10 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const fileName = large ? `${name}_large.png` : `${name}.png`;
-        const path = this.vpkStatusIconFiles.find((t) => t.endsWith(fileName));
+        const fileName = large ? `${name}_large_png` : `${name}_png`;
+        const path = this.vpkStatusIconFiles.find((t) => t.endsWith(`${fileName}.vtex_c`));
 
-        if (path) return this.getPathURL(path);
+        if (path) return this.getPathURL(path, 'local');
     }
 
     /**
@@ -848,9 +973,9 @@ class CSGOCdn extends EventEmitter {
 
             if (!kit || !kit.image_inventory) continue;
 
-            const path = `resource/flash/${kit.image_inventory}.png`;
+            const path = `panorama/images/${kit.image_inventory}_png`;
 
-            const url = this.getPathURL(path);
+            const url = this.getPathURL(path, 'local');
 
             if (url) {
                 return url;
@@ -921,13 +1046,13 @@ class CSGOCdn extends EventEmitter {
 
                     if (!prefabs[item] || !prefabs[item].image_inventory) continue;
 
-                    path = `resource/flash/${prefabs[item].image_inventory}.png`;
+                    path = `panorama/images/${prefabs[item].image_inventory}_png`;
                 }
                 else {
-                    path = `resource/flash/${items[item].image_inventory}.png`;
+                    path = `panorama/images/${items[item].image_inventory}_png`;
                 }
 
-                const url = this.getPathURL(path);
+                const url = this.getPathURL(path, 'local');
 
                 if (url) {
                     return url;
@@ -937,4 +1062,4 @@ class CSGOCdn extends EventEmitter {
     }
 }
 
-module.exports = CSGOCdn;
+export default CSGOCdn;

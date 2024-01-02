@@ -3,3 +3,4 @@ node_modules/
 data/
 example.test.js
 testList.js
+.DS_Store

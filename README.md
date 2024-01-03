@@ -11,7 +11,6 @@ Can retrieve CDN images for:
 * Tools (Crate Keys, Cases, Stattrak Swap Tool, etc...)
 * Status Icons (Pins, ESports Trophies, Map Contribution Tokens, Service Medals, etc...)
 
-
 ## Table of Contents
   * [Why?](https://github.com/Step7750/node-csgo-cdn#why)
   * [How?](https://github.com/Step7750/node-csgo-cdn#how)
@@ -28,7 +27,7 @@ Can retrieve CDN images for:
     * [phase](https://github.com/Step7750/node-csgo-cdn#phase)
   * [Events](https://github.com/Step7750/node-csgo-cdn#events)
     * [ready](https://github.com/Step7750/node-csgo-cdn#ready)
-    
+
 
 ## Why?
 
@@ -47,14 +46,16 @@ files which include the sticker, music kit, tools, and status icon images.
 The root of a VPK contains a `dir` file (`pak01_dir.vpk`) that specifies where files are located over multiple packages. If you look in
 the install directory of CS:GO, you'll see `pak01_003.vpk`, `pak01_004.vpk`, etc... where these files are located.
 
-Thankfully, Valve was kind enough (as of writing this) to include all of the relevant images in a few packages
-which are only ~400MB.
+Thankfully, Valve was kind enough ~~(as of writing this)~~ to include all of the relevant images in a packages
+which are only ~13GB.
 
-This library, using node-steam-user, checks the manifest for any updates to the public branch of CS:GO, and if so,
-downloads only the required VPK packages that contain all relevant images if they have changed from the
-content servers.
+This library, using [DepotDownloader](https://github.com/SteamRE/DepotDownloader), gets all require VPK files from the public branch of CS2.
+It will only download the VPK files that have changed since the last update, and will only download the relevant
+VPK files for the options you have enabled.
 
-When trying to retrieve a CDN image URL for a given item, the library takes the SHA1 hash of the file and the VPK
+It then Extracts the real images from the VPK files and stores them in a data directory via the command line interface of [Source 2 Viewer](https://github.com/ValveResourceFormat/ValveResourceFormat).
+
+When trying to retrieve a CDN image URL for a given item, the library takes the SHA1 hash of the image and the VPK
 path that links to it to generate the corresponding URL.
 
 Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologne2015/mousesports.3e75da497d9f75fa56f463c22db25f29992561ce.png
@@ -65,11 +66,16 @@ Example URL: https://steamcdn-a.akamaihd.net/apps/730/icons/econ/stickers/cologn
 
 #### See example.js
 ```javascript
-const SteamUser = require('steam-user');
-const csgoCDN = require('csgo-cdn');
+import SteamUser from 'steam-user';
+import CSGOCdn from './index.js';
 
 const user = new SteamUser();
-const cdn = new csgoCDN(user, {logLevel: 'debug'});
+const cdn = new CSGOCdn(
+    user,
+    {
+        logLevel: 'debug'
+    }
+);
 
 cdn.on('ready', () => {
    console.log(cdn.getItemNameURL('M4A4 | 龍王 (Dragon King) (Field-Tested)'));
@@ -81,7 +87,7 @@ cdn.on('ready', () => {
 
 ### Constructor(client, options)
 
-* `client` - [node-steam-user](https://github.com/DoctorMcKay/node-steam-user) Client **The account MUST own CS:GO**
+* `client` - [node-steam-user](https://github.com/DoctorMcKay/node-steam-user) Client
 * `options` - Options
     ```javascript
     {
@@ -97,7 +103,6 @@ cdn.on('ready', () => {
         statusIcons: true, // whether to obtain the vpk for status icons
     }
     ```
-    
 ### getItemNameURL(marketHashName, phase)
 
 * `marketHashName` - The market hash name of an item (ex. "Sticker | Robo" or "AWP | Redline (Field-Tested)")
@@ -114,11 +119,15 @@ Returns the 'large' version of the image.
 * `stickerName` - Name of the sticker path from `items_game.txt` (ex. cluj2015/sig_olofmeister_gold)
 * `large` - Whether to obtain the large version of the image
 
+### getStatusIconURL(statusIconName, large=true)
+
+* `statusIconName` - Name of the Status Icon from `items_game.txt` (ex. cologne_prediction_gold)
+* `large` - Whether to obtain the large version of the image
+
 ### getPatchURL(patchName, large=true)
 
 * `stickerName` - Name of the patch path from `items_game.txt` (ex. case01/patch_phoenix)
 * `large` - Whether to obtain the large version of the image
-
 
 ### getWeaponURL(defindex, paintindex)
 

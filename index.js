@@ -605,7 +605,7 @@ class CSGOCdn extends EventEmitter {
      * @param large Whether to obtain the "large" CDN version of the item
      * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-     getPatchURL(name, large=true) {
+    getPatchURL(name, large=true) {
         if (!this.ready) {
             return;
         }
@@ -628,7 +628,7 @@ class CSGOCdn extends EventEmitter {
      * @param large Whether to obtain the "large" CDN version of the item
      * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-     getStatusIconURL(name, large=true) {
+    getStatusIconURL(name, large=true) {
         if (!this.ready) {
             return;
         }

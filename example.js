@@ -43,8 +43,8 @@ cdn.on('ready', () => {
     console.log('AK-47', cdn.getItemNameURL('AK-47'));
     console.log('★ Karambit | Forest DDPAT', cdn.getItemNameURL('★ Karambit | Forest DDPAT'));
     console.log('AWP | Redline', cdn.getItemNameURL('AWP | Redline'));
-    console.log('econ/status_icons/cologne_prediction_gold', cdn.getStatusIconURL('econ/status_icons/cologne_prediction_gold'));
-    console.log('econ/status_icons/cologne_prediction_gold large', cdn.getStatusIconURL('econ/status_icons/cologne_prediction_gold', true));
+    console.log('cologne_prediction_gold', cdn.getStatusIconURL('cologne_prediction_gold'));
+    console.log('cologne_prediction_gold large', cdn.getStatusIconURL('cologne_prediction_gold', true));
 });
 
 console.log('Logging into Steam....');

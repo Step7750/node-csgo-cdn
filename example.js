@@ -2,17 +2,11 @@ import SteamUser from 'steam-user';
 import SteamTotp from 'steam-totp';
 import CSGOCdn from './index.js';
 
-const cred = {
-    username: 'your_username',
-    password: 'your_password',
-    shared_secret: 'your_optional_shared_secret'
-};
-
 const user = new SteamUser();
 const cdn = new CSGOCdn(
     user,
     {
-        logLevel: 'debug'
+        // logLevel: 'debug'
     }
 );
 
@@ -22,7 +16,7 @@ cdn.on('ready', () => {
     console.log('case01/patch_phoenix', cdn.getPatchURL('case01/patch_phoenix', false));
     console.log('case01/patch_phoenix', cdn.getPatchURL('case01/patch_phoenix', true));
     console.log('case01/patch_hydra large', cdn.getPatchURL('case01/patch_hydra', true));
-    console.log('case_skillgroups/patch_supreme large', true, cdn.getPatchURL('case_skillgroups/patch_supreme', true));
+    console.log('case_skillgroups/patch_supreme large', cdn.getPatchURL('case_skillgroups/patch_supreme', true));
     console.log('Patch | Phoenix', cdn.getPatchNameURL('Patch | Phoenix'));
     console.log('Patch | Hydra', cdn.getPatchNameURL('Patch | Hydra'));
     console.log('Patch | Phoenix', cdn.getItemNameURL('Patch | Phoenix'));
@@ -54,36 +48,9 @@ cdn.on('ready', () => {
     console.log('econ/status_icons/cologne_prediction_gold large', cdn.getStatusIconURL('econ/status_icons/cologne_prediction_gold', true));
 });
 
-if (cred.shared_secret === undefined) {
-    const loginDetails = {
-        accountName: cred.username,
-        password: cred.password,
-        rememberPassword: true,
-        logonID: 2121,
-    };
+console.log('Logging into Steam....');
 
-    console.log('Logging into Steam....');
-
-    user.logOn(loginDetails);
-} else {
-    SteamTotp.getAuthCode(cred.shared_secret, (err, code) => {
-        if (err) {
-            throw err;
-        }
-
-        const loginDetails = {
-            accountName: cred.username,
-            password: cred.password,
-            rememberPassword: true,
-            twoFactorCode: code,
-            logonID: 2121,
-        };
-
-        console.log('Logging into Steam....');
-
-        user.logOn(loginDetails);
-    });
-}
+user.logOn({ anonymous: true });
 
 user.on('loggedOn', () => {
     console.log('Logged onto Steam');

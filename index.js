@@ -1,14 +1,13 @@
 import EventEmitter from 'events';
-import fs, { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import vpk from 'vpk';
 import vdf from 'simple-vdf';
-import { hashFile, hashSync } from 'hasha';
+import { hashSync } from 'hasha';
 import winston from 'winston';
 import { exec } from 'child_process';
 import { HttpClient } from '@doctormckay/stdlib/http.js'
 import AdmZip from 'adm-zip';
 import os from 'node:os';
-import { unlinkSync } from 'fs';
 
 const defaultConfig = {
     directory: 'data',
@@ -479,7 +478,7 @@ class CSGOCdn extends EventEmitter {
 
         this.log.debug(`Downloading Required VPK files ${requiredIndices}`);
 
-        const filesToDownloadRegex = [];
+        const filesToDownload = [];
 
         for (let index in requiredIndices) {
             index = parseInt(index);
@@ -490,10 +489,10 @@ class CSGOCdn extends EventEmitter {
             const fileName = `pak01_${paddedIndex}.vpk`;
             const filePath = `${this.config.directory}/${fileName}`;
 
-            filesToDownloadRegex.push({ fileName: `game\\csgo\\${fileName}`, filePath });
+            filesToDownload.push({ fileName: `game\\csgo\\${fileName}`, filePath });
         }
 
-        writeFileSync(`${this.config.directory}/${this.config.fileList}`, filesToDownloadRegex.map((f) => f.fileName).join('\n'));
+        writeFileSync(`${this.config.directory}/${this.config.fileList}`, filesToDownload.map((f) => f.fileName).join('\n'));
 
         await this.downloadFiles();
 

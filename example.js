@@ -12,11 +12,6 @@ const user = new SteamUser();
 const cdn = new CSGOCdn(
     user,
     {
-        musicKits: true,
-        cases: true,
-        tools: true,
-        statusIcons: true,
-        package: true,
         logLevel: 'debug'
     }
 );
@@ -58,7 +53,6 @@ cdn.on('ready', () => {
     console.log('econ/status_icons/cologne_prediction_gold', cdn.getStatusIconURL('econ/status_icons/cologne_prediction_gold'));
     console.log('econ/status_icons/cologne_prediction_gold large', cdn.getStatusIconURL('econ/status_icons/cologne_prediction_gold', true));
 });
-
 
 if (cred.shared_secret === undefined) {
     const loginDetails = {

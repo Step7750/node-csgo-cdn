@@ -1,12 +1,11 @@
 import SteamUser from 'steam-user';
-import SteamTotp from 'steam-totp';
 import CSGOCdn from './index.js';
 
 const user = new SteamUser();
 const cdn = new CSGOCdn(
     user,
     {
-        // logLevel: 'debug'
+        logLevel: 'debug'
     }
 );
 

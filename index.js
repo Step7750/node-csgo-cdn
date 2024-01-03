@@ -8,6 +8,7 @@ import { exec } from 'child_process';
 import { HttpClient } from '@doctormckay/stdlib/http.js'
 import AdmZip from 'adm-zip';
 import os from 'node:os';
+import { pid } from 'node:process';
 
 const defaultConfig = {
     directory: 'data',
@@ -210,13 +211,13 @@ class CSGOCdn extends EventEmitter {
             await this.downloadDepotDownloader();
         }
 
-        writeFileSync(`${this.config.directory}/${this.config.fileList}`, 'game\\csgo\\pak01_dir.vpk');
+        writeFileSync(`${this.config.directory}/${this.config.fileList}-${pid}`, 'game\\csgo\\pak01_dir.vpk');
 
         this.log.debug('Downloading require static files');
 
         await this.downloadFiles();
 
-        unlinkSync(`${this.config.directory}/${this.config.fileList}`);
+        unlinkSync(`${this.config.directory}/${this.config.fileList}-${pid}`);
 
         this.log.debug('Loading static file resources');
 
@@ -492,11 +493,11 @@ class CSGOCdn extends EventEmitter {
             filesToDownload.push({ fileName: `game\\csgo\\${fileName}`, filePath });
         }
 
-        writeFileSync(`${this.config.directory}/${this.config.fileList}`, filesToDownload.map((f) => f.fileName).join('\n'));
+        writeFileSync(`${this.config.directory}/${this.config.fileList}-${pid}`, filesToDownload.map((f) => f.fileName).join('\n'));
 
         await this.downloadFiles();
 
-        unlinkSync(`${this.config.directory}/${this.config.fileList}`);
+        unlinkSync(`${this.config.directory}/${this.config.fileList}-${pid}`);
     }
 
 
@@ -506,7 +507,7 @@ class CSGOCdn extends EventEmitter {
      */
     async downloadFiles() {
         return new Promise((resolve, reject) => {
-            exec(`./${this.config.directory}/${this.config.depotDownloader} -app ${APP_ID} -depot ${DEPOT_ID} -filelist ${this.config.directory}/${this.config.fileList} -dir ${this.config.directory} -os windows -osarch 64 max-downloads 16 -max-servers 40 -validate`, (error, stdout) => {
+            exec(`./${this.config.directory}/${this.config.depotDownloader} -app ${APP_ID} -depot ${DEPOT_ID} -filelist ${this.config.directory}/${this.config.fileList}-${pid} -dir ${this.config.directory} -os windows -osarch 64 max-downloads 16 -max-servers 40 -validate`, (error, stdout) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
                     reject();

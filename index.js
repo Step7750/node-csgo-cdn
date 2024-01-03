@@ -1,13 +1,14 @@
 import EventEmitter from 'events';
-import fs from 'fs';
+import fs, { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import vpk from 'vpk';
 import vdf from 'simple-vdf';
-import { hash, hashFile } from 'hasha';
+import { hashFile, hashSync } from 'hasha';
 import winston from 'winston';
 import { exec } from 'child_process';
 import { HttpClient } from '@doctormckay/stdlib/http.js'
 import AdmZip from 'adm-zip';
 import os from 'node:os';
+import { unlinkSync } from 'fs';
 
 const defaultConfig = {
     directory: 'data',
@@ -21,7 +22,9 @@ const defaultConfig = {
     tools: true,
     statusIcons: true,
     logLevel: 'info',
-    vrfBinary: 'Decompiler'
+    vrfBinary: 'Decompiler',
+    depotDownloader: 'DepotDownloader',
+    fileList: 'filelist.txt'
 };
 
 const APP_ID = 730;
@@ -29,15 +32,17 @@ const DEPOT_ID = 2347770;
 
 const wears = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
 
+const ECON_PATH = 'panorama/images/econ';
+
 const neededDirectories = {
-    stickers: 'panorama/images/econ/stickers',
-    patches: 'panorama/images/econ/patches',
-    graffiti: 'panorama/images/econ/stickers/default',
-    characters: 'panorama/images/econ/characters',
-    musicKits: 'panorama/images/econ/music_kits',
-    cases: 'panorama/images/econ/weapon_cases',
-    tools: 'panorama/images/econ/tools',
-    statusIcons: 'panorama/images/econ/status_icons',
+    stickers: `${ECON_PATH}/stickers`,
+    patches: `${ECON_PATH}/patches`,
+    graffiti: `${ECON_PATH}/stickers/default`,
+    characters: `${ECON_PATH}/characters`,
+    musicKits: `${ECON_PATH}/music_kits`,
+    cases: `${ECON_PATH}/weapon_cases`,
+    tools: `${ECON_PATH}/tools`,
+    statusIcons: `${ECON_PATH}/status_icons`,
 };
 
 const neededFiles = {
@@ -45,10 +50,6 @@ const neededFiles = {
     itemsGameCdn: 'scripts/items/items_game_cdn.txt',
     csgoEnglish: 'resource/csgo_english.txt'
 };
-
-function bytesToMB(bytes) {
-    return (bytes/1000000).toFixed(2);
-}
 
 class CSGOCdn extends EventEmitter {
     get ready() {
@@ -125,8 +126,8 @@ class CSGOCdn extends EventEmitter {
     createDataDirectory() {
         const dir = `./${this.config.directory}`;
 
-        if (!fs.existsSync(dir)){
-            fs.mkdirSync(dir);
+        if (!existsSync(dir)){
+            mkdirSync(dir);
         }
     }
 
@@ -200,55 +201,63 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const manifestId = await this.getLatestManifestId();
+        if (!existsSync(`${this.config.directory}/${this.config.vrfBinary}`)) {
+            this.log.error(`VRF binary not found at ${this.config.vrfBinary}, downloading...`);
+            await this.downloadVRF();
+        }
 
-        this.log.debug(`Obtained latest manifest ID: ${manifestId.gid}`);
+        if (!existsSync(`${this.config.directory}/${this.config.depotDownloader}`)) {
+            this.log.error(`DepotDownloader binary not found at ${this.config.depotDownloader}, downloading...`);
+            await this.downloadDepotDownloader();
+        }
 
-        this.user.getManifest(APP_ID, DEPOT_ID, manifestId.gid, 'public', '' ).then(async ({manifest}) => {
-            const manifestFiles = manifest.files;
+        writeFileSync(`${this.config.directory}/${this.config.fileList}`, 'game\\csgo\\pak01_dir.vpk');
 
-            const dirFile = manifest.files.find((file) => file.filename.endsWith("csgo\\pak01_dir.vpk"));
+        this.log.debug('Downloading require static files');
 
-            this.log.debug(`Downloading required static files`);
+        await this.downloadFiles();
 
-            await this.downloadFiles([dirFile]);
+        unlinkSync(`${this.config.directory}/${this.config.fileList}`);
 
-            this.log.debug('Loading static file resources');
+        this.log.debug('Loading static file resources');
 
-            this.loadVPK();
+        this.loadVPK();
 
-            await this.downloadVPKFiles(this.vpkDir, manifestFiles);
+        await this.downloadVPKFiles();
 
-            this.loadResources();
+        this.loadResources();
 
-            const pathsToDump = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]).concat(Object.keys(neededFiles).map((f) => neededFiles[f]));
+        const pathsToDump = Object.keys(neededDirectories).filter((f) => this.config[f] === true ).map((f) => neededDirectories[f]).concat(Object.keys(neededFiles).map((f) => neededFiles[f]));
 
-            // Check if the VRF binary exists
-            if (!fs.existsSync(`${this.config.directory}/${this.config.vrfBinary}`)) {
-                this.log.error(`VRF binary not found at ${this.config.vrfBinary}, downloading...`);
-                await this.downloadVRF();
-            }
+        // In CS:GO it was possible to just extract the image from the VPK, in CS2 this is not the case anymore
+        // to work around this, we will still download all the required VPK's but then using https://github.com/ValveResourceFormat/ValveResourceFormat
+        // we will extract the images from the VPK's directly and save them locally.
+        // With that we can then use the images to generate the file path.
+        await Promise.all(
+            pathsToDump.map((path) => new Promise((resolve, reject) => {
+                this.log.debug(`Dumping ${path}...`);
+                exec(`${this.config.directory}/${this.config.vrfBinary} --input data/game/csgo/pak01_dir.vpk --vpk_filepath ${path} -o data -d > /dev/null`, (error) => {
+                    if (error) {
+                        console.error(`exec error: ${error}`);
+                    }
 
-            await Promise.all(
-                pathsToDump.map((path) => new Promise((resolve, reject) => {
-                    this.log.debug(`Dumping ${path}...`);
+                    resolve();
+                });
+            })
+        ));
 
-                    exec(`${this.config.directory}/${this.config.vrfBinary} --input data/pak01_dir.vpk --vpk_filepath ${path} -o data -d`, (error, stdout, stderr) => {
-                        if (error) {
-                            console.error(`exec error: ${error}`);
-                        }
-
-                        resolve();
-                    });
-                })
-            ));
-
-            this.log.info('Finished updating CS:GO files');
-            this.ready = true;
-        });
+        this.log.info('Finished updating CS:GO files');
+        this.ready = true;
     }
 
-    async downloadVRF () {
+    /**
+     * Returns a platform-architecture string
+     *
+     * Duplicate values with be an array
+     *
+     * @param dict Dictionary to invert
+     */
+    getPlatform() {
         const platform = os.platform();
         const architecture = os.arch();
 
@@ -283,37 +292,83 @@ class CSGOCdn extends EventEmitter {
                 archName = 'unknown';
         }
 
+        return `${osName}-${archName}`
+    }
+
+    /**
+     * By using the Github API request the latest tag from the given repository
+     *
+     * @param repository Repository to get the latest tag from
+     *
+     * @return {Promise<string>} Latest tag name
+     */
+    async getLatestGitTag(repository) {
         let latestTag = await this.client.request({
             method: 'GET',
-            url: 'https://api.github.com/repos/ValveResourceFormat/ValveResourceFormat/releases/latest'
+            url: `https://api.github.com/repos/${repository}/releases/latest`
         });
 
         if(latestTag.statusCode !== 200) {
             throw new Error(`Failed to get latest release ${latestTag.statusCode}`);
         }
 
+        return latestTag.jsonBody.tag_name
+    }
+
+    /**
+     * This function will download the latest binary from the given repository
+     *
+     * And extract the binary from the zip file and save it in the data directory
+     *
+     * @param repository Repository to get the latest binary from
+     *
+     * @param binaryName Name of the binary to download
+     */
+    async getBinary(repository, binaryName) {
+        const latestTag = await this.getLatestGitTag(repository);
+        const platform = this.getPlatform();
+
         let binary = await this.client.request({
             method: 'GET',
             followRedirects: true,
-            url: `https://github.com/ValveResourceFormat/ValveResourceFormat/releases/download/${latestTag.jsonBody.tag_name}/Decompiler-${osName}-${archName}.zip`
+            url: `https://github.com/${repository}/releases/download/${latestTag}/${binaryName}-${platform}.zip`
         });
 
         if(binary.statusCode !== 200 && binary.statusCode !== 302) {
             throw new Error(`Failed to get latest release ${binary.statusCode}`);
         }
 
-        fs.writeFileSync('./data/Decompiler.zip', binary.rawBody);
-
-        const zip = new AdmZip('./data/Decompiler.zip');
+        writeFileSync(`./data/${binaryName}.zip`, binary.rawBody);
+        const zip = new AdmZip(`./data/${binaryName}.zip`);
         zip.extractAllTo('./data', true);
 
-        fs.unlinkSync('./data/Decompiler.zip');
+        unlinkSync(`./data/${binaryName}.zip`);
 
         if (platform !== 'win32') {
-            fs.chmodSync('./data/Decompiler', '755');
+            chmodSync(`./data/${binaryName}`, '755');
         }
     }
 
+    /**
+     * Downloads the latest version of https://github.com/SteamRE/DepotDownloader
+     */
+    async downloadDepotDownloader() {
+        await this.getBinary('SteamRE/DepotDownloader', 'DepotDownloader');
+    }
+
+    /**
+     * Downloads the latest version of https://github.com/ValveResourceFormat/ValveResourceFormat
+    */
+    async downloadVRF() {
+        await this.getBinary('ValveResourceFormat/ValveResourceFormat', 'Decompiler');
+    }
+
+    /**
+     * Parses the items_game.txt, items_game_cdn.txt file and the csgo_english.txt file
+     *
+     * will also invert the csgo_english.txt file to make it easier to search for the correct item
+     *
+     */
     loadResources() {
         this.itemsGame = vdf.parse(this.vpkDir.getFile('scripts/items/items_game.txt').toString())['items_game'];
         this.itemsGameCDN = this.parseItemsCDN(this.vpkDir.getFile('scripts/items/items_game_cdn.txt').toString());
@@ -380,60 +435,30 @@ class CSGOCdn extends EventEmitter {
     }
 
     /**
-     * Downloads the given VPK files from the Steam CDN
-     * @param files Steam Manifest File Array
-     * @return {Promise<>} Fulfilled when completed downloading
-     */
-    async downloadFiles(files) {
-        const promises = [];
-
-        await Promise.all(
-            files.map(async(file) => {
-                let name = file.filename.split('\\');
-                name = name[name.length-1];
-
-                const path = `${this.config.directory}/${name}`;
-
-                const isDownloaded = await this.isFileDownloaded(path, file.sha_content);
-
-                if (isDownloaded) {
-                    return;
-                }
-
-                const promise = this.user.downloadFile(APP_ID, DEPOT_ID, file, `${this.config.directory}/${name}`);
-                promises.push(promise);
-            })
-        );
-
-        return Promise.all(promises);
-    }
-
-    /**
      * Loads the CSGO dir VPK specified in the config
      */
     loadVPK() {
-        this.vpkDir = new vpk(`${this.config.directory}/pak01_dir.vpk`);
+        this.vpkDir = new vpk(`${this.config.directory}/game/csgo/pak01_dir.vpk`);
         this.vpkDir.load();
 
-        this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/stickers'));
-        this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/patches'));
-        this.vpkStatusIconFiles = this.vpkDir.files.filter((f) => f.startsWith('panorama/images/econ/status_icons'));
+        this.vpkStickerFiles = this.vpkDir.files.filter((f) => f.startsWith(neededDirectories.stickers));
+        this.vpkPatchFiles = this.vpkDir.files.filter((f) => f.startsWith(neededDirectories.patches));
+        this.vpkStatusIconFiles = this.vpkDir.files.filter((f) => f.startsWith(neededDirectories.statusIcons));
     }
 
     /**
      * Given the CSGO VPK Directory, returns the necessary indices for the chosen options
-     * @param vpkDir CSGO VPK Directory
      * @return {Array} Necessary Sticker VPK Indices
      */
-    getRequiredVPKFiles(vpkDir) {
+    getRequiredVPKFiles() {
         const requiredIndices = [];
 
         const dirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
         const files = Object.keys(neededFiles).map((f) => neededFiles[f]);
 
-        for (const fileName of vpkDir.files) {
+        for (const fileName of this.vpkDir.files) {
             if (dirs.some((dir) => fileName.startsWith(dir)) || files.some((file) => fileName === file))  {
-                const archiveIndex = vpkDir.tree[fileName].archiveIndex;
+                const archiveIndex = this.vpkDir.tree[fileName].archiveIndex;
                 if (!requiredIndices.includes(archiveIndex)) {
                     requiredIndices.push(archiveIndex);
                 }
@@ -445,16 +470,16 @@ class CSGOCdn extends EventEmitter {
 
     /**
      * Downloads the required VPK files
-     * @param vpkDir CSGO VPK Directory
-     * @param manifestFiles Manifest files
      * @return {Promise<void>}
      */
-    async downloadVPKFiles(vpkDir, manifestFiles) {
+    async downloadVPKFiles() {
         this.log.debug('Computing required VPK files for selected packages');
 
-        const requiredIndices = this.getRequiredVPKFiles(vpkDir);
+        const requiredIndices = this.getRequiredVPKFiles();
 
-        this.log.debug(`Required VPK files ${requiredIndices}`);
+        this.log.debug(`Downloading Required VPK files ${requiredIndices}`);
+
+        const filesToDownloadRegex = [];
 
         for (let index in requiredIndices) {
             index = parseInt(index);
@@ -463,48 +488,35 @@ class CSGOCdn extends EventEmitter {
             const archiveIndex = requiredIndices[index];
             const paddedIndex = '0'.repeat(3-archiveIndex.toString().length) + archiveIndex;
             const fileName = `pak01_${paddedIndex}.vpk`;
-
-            const file = manifestFiles.find((f) => f.filename.endsWith(fileName));
             const filePath = `${this.config.directory}/${fileName}`;
 
-            const isDownloaded = await this.isFileDownloaded(filePath, file.sha_content);
-
-            if (isDownloaded) {
-                this.log.info(`Already downloaded ${filePath}`);
-                continue;
-            }
-
-            const status = `[${index+1}/${requiredIndices.length}]`;
-
-            this.log.info(`${status} Downloading ${fileName} - ${bytesToMB(file.size)} MB`);
-
-            await this.user.downloadFile(APP_ID, DEPOT_ID, file, filePath, (none, { type, bytesDownloaded, totalSizeBytes }) => {
-                if (type === 'progress') {
-                    this.log.info(`${status} ${(bytesDownloaded*100/totalSizeBytes).toFixed(2)}% - ${bytesToMB(bytesDownloaded)}/${bytesToMB(totalSizeBytes)} MB`);
-                }
-            });
-
-            this.log.info(`${status} Downloaded ${fileName}`);
+            filesToDownloadRegex.push({ fileName: `game\\csgo\\${fileName}`, filePath });
         }
+
+        writeFileSync(`${this.config.directory}/${this.config.fileList}`, filesToDownloadRegex.map((f) => f.fileName).join('\n'));
+
+        await this.downloadFiles();
+
+        unlinkSync(`${this.config.directory}/${this.config.fileList}`);
     }
+
 
     /**
-     * Returns whether a file at the given path has the given sha1
-     * @param path File path
-     * @param sha1 File SHA1 hash
-     * @return {Promise<boolean>} Whether the file has the hash
+     * Download the files from the filelist.txt via depotdownloader
+     * @return {Promise<void>}
      */
-    async isFileDownloaded(path, sha1) {
-        try {
-            const fileSha1 = await hashFile(path, {algorithm: 'sha1'});
+    async downloadFiles() {
+        return new Promise((resolve, reject) => {
+            exec(`./${this.config.directory}/${this.config.depotDownloader} -app ${APP_ID} -depot ${DEPOT_ID} -filelist ${this.config.directory}/${this.config.fileList} -dir ${this.config.directory} -os windows -osarch 64 max-downloads 16 -max-servers 40 -validate`, (error, stdout) => {
+                if (error) {
+                    console.error(`exec error: ${error}`);
+                    reject();
+                }
 
-            return fileSha1 === sha1;
-        }
-        catch (e) {
-            return false;
-        }
+                resolve();
+            });
+        })
     }
-
 
     /**
      * Returns all items found in the items_game.txt file
@@ -517,7 +529,6 @@ class CSGOCdn extends EventEmitter {
 
         return this.itemsGame?.items;
     }
-
 
     /**
      * Given a VPK path, returns the CDN URL
@@ -537,11 +548,11 @@ class CSGOCdn extends EventEmitter {
             }
             this.log.debug(`Reading local file ${this.config.directory + '/' + path}...`);
             // check if file exists
-            if (!fs.existsSync(`./${this.config.directory}/${path}`)) {
+            if (!existsSync(`./${this.config.directory}/${path}`)) {
                 this.log.error(`Failed to retrieve ${path} in VPK, do you have the package category enabled in options?`);
                 return;
             }
-            file = fs.readFileSync(`./${this.config.directory}/${path}`)
+            file = readFileSync(`./${this.config.directory}/${path}`)
         }
 
         if (!file) {
@@ -549,7 +560,7 @@ class CSGOCdn extends EventEmitter {
             return;
         }
 
-        const sha1 = hash(file, {
+        const sha1 = hashSync(file, {
             'algorithm': 'sha1'
         });
 
@@ -758,7 +769,7 @@ class CSGOCdn extends EventEmitter {
             }
         }
     }
-    
+
     /**
      * Returns the patch URL given the market hash name
      * @param marketHashName Patch name

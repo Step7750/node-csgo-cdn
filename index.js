@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, statSync } from 'fs';
 import vpk from 'vpk';
 import vdf from 'simple-vdf';
 import { hashSync } from 'hasha';
@@ -132,6 +132,22 @@ class CSGOCdn extends EventEmitter {
     }
 
     /**
+     * Cleans up any old filelist.txt files that are older than an hour
+     * @return {void}
+     */
+    cleanup() {
+        const files = readdirSync(`./${this.config.directory}`).filter(fn => fn.startsWith(this.config.fileList));
+
+        for (const file of files) {
+            const stats = statSync(`./${this.config.directory}/${file}`);
+
+            if (stats.isFile() && stats.mtimeMs < Date.now() - 3600000) {
+                unlinkSync(`./${this.config.directory}/${file}`);
+            }
+        }
+    }
+
+    /**
      * Runs the update loop at the specified config interval
      * @return {Promise<undefined>|void}
      */
@@ -141,7 +157,7 @@ class CSGOCdn extends EventEmitter {
             this.update().then(() => {
                 setTimeout(() => {
                     this.updateLoop();
-                }, this.config.updateInterval*1000);
+                }, this.config.updateInterval * 1000);
             })
         }
         else {
@@ -196,6 +212,7 @@ class CSGOCdn extends EventEmitter {
     async update() {
         this.log.info('Checking for CS:GO file updates');
 
+
         if (!this.steamReady) {
             this.log.warn(`Steam not ready, can't check for updates`);
             return;
@@ -243,19 +260,19 @@ class CSGOCdn extends EventEmitter {
 
                     resolve();
                 });
-            })
-        ));
+            }))
+        );
 
         this.log.info('Finished updating CS:GO files');
         this.ready = true;
+
+        this.cleanup();
     }
 
     /**
-     * Returns a platform-architecture string
+     * Returns a platform-architecture string, or unknown if it can't be determined
      *
-     * Duplicate values with be an array
-     *
-     * @param dict Dictionary to invert
+     * @returns {string} Platform-architecture string
      */
     getPlatform() {
         const platform = os.platform();
@@ -451,21 +468,20 @@ class CSGOCdn extends EventEmitter {
      * @return {Array} Necessary Sticker VPK Indices
      */
     getRequiredVPKFiles() {
-        const requiredIndices = [];
+        const requiredIndices = {};
 
         const dirs = Object.keys(neededDirectories).filter((f) => !!this.config[f]).map((f) => neededDirectories[f]);
-        const files = Object.keys(neededFiles).map((f) => neededFiles[f]);
 
         for (const fileName of this.vpkDir.files) {
-            if (dirs.some((dir) => fileName.startsWith(dir)) || files.some((file) => fileName === file))  {
+            if (dirs.some((dir) => fileName.startsWith(dir)) || neededFiles[fileName]) {
                 const archiveIndex = this.vpkDir.tree[fileName].archiveIndex;
-                if (!requiredIndices.includes(archiveIndex)) {
-                    requiredIndices.push(archiveIndex);
+                if(!requiredIndices[archiveIndex]) {
+                    requiredIndices[archiveIndex] = true;
                 }
             }
         }
 
-        return requiredIndices.sort();
+        return Object.keys(requiredIndices).map((i) => parseInt(i)).sort((a,b) => a < b);
     }
 
     /**
@@ -626,15 +642,15 @@ class CSGOCdn extends EventEmitter {
      *      items_game.txt can be found in the core game files of CS:GO or as itemsGame here
      *
      * @param name The item name (the image_inventory field in items_game.txt)
-     * @param large Whether to obtain the "large" CDN version of the item
+     * @param size Whether to obtain the "small" or "large" or the normal size CDN version of the item
      * @return {string|void} If successful, the HTTPS CDN URL for the item
      */
-    getStatusIconURL(name, large=true) {
+    getStatusIconURL(name, size='') {
         if (!this.ready) {
             return;
         }
 
-        const fileName = large ? `${name}_large_png` : `${name}_png`;
+        const fileName = size ? `${name}_${size}_png` : `${name}_png`;
         const path = this.vpkStatusIconFiles.find((t) => t.endsWith(`${fileName}.vtex_c`));
 
         if (path) return this.getPathURL(path, 'local');
